@@ -1,0 +1,51 @@
+# Protocol Template
+# Protocols are just python scripts 
+
+import proto
+
+Pro = new Protocol()
+
+### NOTE
+# Provide a short description of the protocol's function. Should be 1-2 lines.
+# Outputs and requirements can be automatically generated, so you don't need to
+# include them here.
+Pro.note("""
+Provides TEMPLATE, version FOO.
+Builds the entire TEMPLATE, may take several minutes on Babbage machines.
+"""
+
+### REQUIREMENTS
+# Order does not matter. The system will handle the requirements.
+Pro.requires('1st-prerequisite-name')
+Pro.requires('2nd-prerequisite-name')
+Pro.requires('3rd-prerequisite-name')
+
+### VARIABLES
+# var calls with a value create or set a variable's value
+# var calls without a value lookup and return that variable's value
+Pro.var('var-name', value)
+
+### ACTIONS
+# Define python actions here. These python functions will become actions.
+def function1():
+  pass
+def function2():
+  pass
+
+# Now register the functions. Order DOES matter here.
+Pro.action(function1())
+Pro.action(function2())
+
+### OUTPUTS
+# These define how the protocol will be cached.
+def test1():
+  return True # The protocol is already complete. No action needed.
+def test2():
+  return False # The protocol needs to be re-run.
+
+# Now register the outputs. If another protocol requires these identifiers, the
+# cache test function will be run, and if the test is False, the protocol actions
+# will be re-run. Note that another protocol doesn't need to require both of
+# these outputs, and only the test that it requires will fire.
+Pro.output('identifier1', test1())
+Pro.output('identifier2', test2())
