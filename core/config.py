@@ -9,22 +9,22 @@ ENV_CONFIG_DIR = 'PROTOS_CONFIG_DIR'
 DEFAULT_CONFIG_DIR = '$HOME/.protos/config/'
 
  # Dict of dicts
-CONFIG_DEFAULTS = {\
-  'project' : {\
-    'repo' : '',\
-    'protocol-dir' : '',\
-    },\
-  'log' : {\
-    'repo' : '',\
-    },\
+CONFIG_DEFAULTS = {
+  'project' : {
+    'repo' : '',
+    'protocol-path' : '', # ordered sequence of :-separated paths
+    },
+  'log' : {
+    'repo' : '',
+    },
   }
 
 def expand_config_path(s):
   '''
-Given a string from a config function call, find the most likely absolute path.
-It's safe to repeatedly call expand_config_path() on a string: absolute paths
-take precendence over everything and expand_config_path always returns absolute
-paths if no error was encountered.
+  Given a string from a config function call, find the most likely absolute path.
+  It's safe to repeatedly call expand_config_path() on a string: absolute paths
+  take precendence over everything and expand_config_path always returns absolute
+  paths if no error was encountered.
   '''
   # Absolute paths can be returned right away.
   if os.path.isabs(s):
@@ -46,6 +46,18 @@ paths if no error was encountered.
     return os.path.abspath(s)
   f=open(s) # Relative path that doesn't seem to exist. This forces the error.
   return None
+
+def expand_protocol_path(protocol,paths):
+  '''
+  Takes a protocol name and a protocol path string, then searches for that
+  protocol in the directories in the path.
+  '''
+  for prefix in paths.split(':'):
+    filename = os.path.join(prefix,protocol)
+    if os.path.exists(filename):
+      return filename
+  return None
+  
 
 class Config:
   def __init__(self,filename=None):
