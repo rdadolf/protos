@@ -15,13 +15,13 @@ import subprocess as sub
 protos.config('hello.config')
 
 # all the same
-protos.require('req')
-pro.require('req')
-require('req')
-requirements('req')
-req('req')
+protos.require('req1')
+pro.require('req2')
+require('req3')
+requirements('req4')
+req('req5')
 # bad
-pros.require.invalid('req')
+pros.require.invalid('req6')
 
 os.chdir('source-dir')
 sub.call('gcc -o hello hello.c')

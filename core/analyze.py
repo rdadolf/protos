@@ -4,6 +4,8 @@
 
 import sys
 import ast
+import warnings
+import config
 
 PROTOS_NAME = 'protos'
 PROTOS_FUNCTIONS = ['log','var','require']
@@ -48,7 +50,10 @@ a list of definition names or PROTOS_ALL (to indicate everything).
 def find_calls(src,prog,mod_names):
   '''
 Finds all calls to the protos module and returns them.
-Returns a list of (name,args,kws,stargs,kwargs), some of which may be None
+Transform imported names into their canonical forms.
+(i.e.- 'from protos import require as req' followed by 'req("something")' will
+still return 'require' in the output call list.
+Returns a list of (name,args,kws,stargs,kwargs); some arguments may be None.
   '''
   # Find all the things that cound
   if mod_names['']==PROTOS_ALL:
@@ -78,7 +83,8 @@ Returns a list of (name,args,kws,stargs,kwargs), some of which may be None
               if ref==asn:
                 name = n
                 break
-          assert name is not None # Analyzer is confused. We thought there was a Protos call, but we can't figure out which one it was. Maybe PROTOS_FUNCTIONS is out of date?
+          if name is None:
+            warnings.warn('Analyzer is confused. We thought there was a Protos call, but we can\'t figure out which one it was. Maybe PROTOS_FUNCTIONS is out of date?')
           # Now return the call
           calls.append( (name, child.args, child.keywords, child.starargs, child.kwargs) )
         
@@ -93,19 +99,52 @@ Returns a list of (name,args,kws,stargs,kwargs), some of which may be None
             if mod_names[mod]==PROTOS_ALL:
               calls.append( (name, child.args, child.keywords, child.starargs, child.kwargs) )
             else:
-              assert False # I don't think there's a way to import just some parts of a module without also making it a bareword. If you're seeing this, that's not true. Please let me know so I can fix it.
+              warnings.warn('I don\'t think there\'s a way to import just some parts of a module without also making it a bareword. If you\'re seeing this, that\'s not true. Please let me know so I can fix it.')
 
   return calls
     
+def find_config_file(calls):
+  '''
+  Finds the 'config()' call in the list of calls.
+  There should only be one, and the first is returned.
+  '''
+  for (n,args,kws,stargs,kwargs) in calls:
+    if n=='config':
+      if len(args)!=1:
+        warnings.warn('"config()" called with more than one argument')
+      filename = str(args[0].s)
+      path = config.expand_config_path(filename)
+      return path
+  warnings.warn('No config file found.')
+  return None
 
-if __name__=='__main__':
-  f = open(sys.argv[1])
+def find_required_protocols(calls):
+  '''
+  Finds all of the 'require()' calls in the list of calls.
+  Returns the names of the protocols that they specify.
+  '''
+  required = []
+  for (n,args,kws,stargs,kwargs) in calls:
+    if n=='require':
+      if len(args)!=1:
+        warnings.warn('"require()" called with more than one argument')
+      proto = str(args[0].s)
+      required.append(proto)
+  return required
+
+def call_list_from_file(file):
+  f = open(file)
   s = f.read()
-  
-  print 80*'v'
   prog = ast.parse(s)
   mod_names = find_module_names(s,prog)
   calls = find_calls(s,prog,mod_names)
+  return calls
+
+if __name__=='__main__':
+  print 80*'v'
+  calls = call_list_from_file(sys.argv[1])
   print 80*'^'
   for (n,args,kws,stargs,kwargs) in calls:
     print n,'(',args,')'
+  print find_config_file(calls)
+  print find_required_protocols(calls)
