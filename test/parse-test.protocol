@@ -1,0 +1,31 @@
+# compile-hello.protocol
+import protos
+import os,protos
+import os,protos
+import protos as pro
+import protos as pros
+import protos as pros
+from protos import log,var
+from protos import require as req, require as requirements
+from protos import require as req, require as requirements
+from protos import require
+import os
+import subprocess as sub
+
+protos.config('hello.config')
+
+# all the same
+protos.require('req')
+pro.require('req')
+require('req')
+requirements('req')
+req('req')
+# bad
+pros.require.invalid('req')
+
+os.chdir('source-dir')
+sub.call('gcc -o hello hello.c')
+
+protos.log('source-dir/hello')
+protos.var('hello-program','source-dir/hello')
+

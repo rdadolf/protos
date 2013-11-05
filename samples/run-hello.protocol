@@ -1,0 +1,14 @@
+# run-hello.protocol
+import protos
+import subprocess as sub
+
+protos.config('hello.config')
+
+protos.require('compile-hello')
+prog = protos.var('hello-program')
+out_file = 'hello-out'
+out_fd = open(out_file,'w')
+sub.call(prog, stdout=out_fd)
+
+protos.log(out_file)
+

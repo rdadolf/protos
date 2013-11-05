@@ -1,0 +1,13 @@
+# compile-hello.protocol
+import protos
+import os
+import subprocess as sub
+
+protos.config('hello.config')
+
+os.chdir('source-dir')
+sub.call('gcc -o hello hello.c')
+
+protos.log('source-dir/hello')
+protos.var('hello-program','source-dir/hello')
+
