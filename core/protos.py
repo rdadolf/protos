@@ -20,4 +20,4 @@ def log(data):
 
 def var(name,value=None):
   print 'VAR'
-
+  return value

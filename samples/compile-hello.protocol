@@ -1,13 +1,19 @@
 # compile-hello.protocol
 import protos
-import os
 import subprocess as sub
+import os
 
+# Prerequisites
 protos.config('hello.config')
 
-os.chdir('source-dir')
-sub.call('gcc -o hello hello.c')
+# Set configuration variables
+dir  = protos.var('hello-dir',os.path.abspath('hello_dir'))
+prog = protos.var('hello-prog',os.path.join(dir,'hello'))
+src  = os.path.join(dir,'hello.c')
 
-protos.log('source-dir/hello')
-protos.var('hello-program','source-dir/hello')
+# Compile the program
+os.chdir(dir)
+sub.call('gcc -o '+prog+' '+src)
 
+# Cache the program binary
+protos.cache(prog)

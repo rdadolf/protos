@@ -19,4 +19,4 @@ for f in FUNCTIONS:
   globals()[f] = getattr(mod,f)
 
 # Now clean up our namespace
-del core
+#del core

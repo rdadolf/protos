@@ -12,7 +12,11 @@ DEFAULT_CONFIG_DIR = '$HOME/.protos/config/'
 CONFIG_DEFAULTS = {
   'project' : {
     'repo' : '',
-    'protocol-path' : '', # ordered sequence of :-separated paths
+    # FIXME: protocol-path deprecated in favor of protocol-dir.
+    #        need to migrate expand_protocol_path once we write
+    #        the software controlling git clones.
+    'protocol-path' : '', # absolute location of protocol files
+    'protocol-dir' : '', # relative to project root (git clone root)
     },
   'log' : {
     'repo' : '',
@@ -28,34 +32,43 @@ def expand_config_path(s):
   '''
   # Absolute paths can be returned right away.
   if os.path.isabs(s):
-    return s
+    if os.path.exists(s):
+      return s
+    # If it's absolute and doesn't exist, don't go hunting. It's wrong.
+    return None
   # Next, try the environment variable.
   env = os.getenv(ENV_CONFIG_DIR)
   if env is not None:
     path = os.path.join(env,s)
     if os.path.exists(path):
-      return path
+      return os.path.abspath(path)
   # No? Try the default config file directory.
   default = os.path.expandvars(DEFAULT_CONFIG_DIR)
   path = os.path.join(default,s)
   if os.path.exists(path):
-    return path
+    return os.path.abspath(path)
   # Still? Okay, last hope is that it's local.
   # (This is bad form because it's not portable. Hence why we try it last.)
   if os.path.exists(s):
     return os.path.abspath(s)
-  f=open(s) # Relative path that doesn't seem to exist. This forces the error.
+  # Nope. We fail.
   return None
 
 def expand_protocol_path(protocol,paths):
   '''
   Takes a protocol name and a protocol path string, then searches for that
   protocol in the directories in the path.
+  Also, try to append '.protocol' to the filename before moving on.
   '''
+  suffix = '.protocol'
   for prefix in paths.split(':'):
     filename = os.path.join(prefix,protocol)
+    print 'TESTING',filename
     if os.path.exists(filename):
-      return filename
+      return os.path.abspath(filename)
+    path = filename+suffix
+    if os.path.exists(path):
+      return os.path.abspath(path)
   return None
   
 

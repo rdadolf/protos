@@ -13,10 +13,12 @@ PROTOS_FUNCTIONS = protos_api.FUNCTIONS
 PROTOS_ALL = '*' # Magic value, value is arbitrary. It is NOT a list.
 
 class Analysis:
-  def __init__(self,filename=None):
+  def __init__(self,filename):
     self._filename = filename
-    if filename is not None:
-      self.parse(filename)
+    self._prog = None
+    self._mod_names = None
+    self._calls = None
+    self.parse(str(filename))
 
   def parse(self,filename):
     self._prog = ast.parse(open(filename).read())

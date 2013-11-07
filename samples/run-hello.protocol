@@ -1,14 +1,21 @@
 # run-hello.protocol
 import protos
 import subprocess as sub
+import os
 
+# Prerequisites
 protos.config('hello.config')
-
 protos.require('compile-hello')
+
+# Grab configuration variables
 prog = protos.var('hello-program')
-out_file = 'hello-out'
+dir = protos.var('hello-dir')
+
+# Run the program
+out_file = os.path.join(dir,'hello-out')
 out_fd = open(out_file,'w')
 sub.call(prog, stdout=out_fd)
+out_fd.close()
 
+# Record our results
 protos.log(out_file)
-
