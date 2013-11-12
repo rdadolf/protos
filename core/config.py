@@ -3,7 +3,9 @@
 # Routines for finding and parsing config files.
 
 import os
+import sys
 import ConfigParser
+from optparse import OptionParser
 
 ENV_CONFIG_DIR = 'PROTOS_CONFIG_DIR'
 DEFAULT_CONFIG_DIR = '$HOME/.protos/config/'
@@ -95,6 +97,25 @@ class Config:
     self.set_defaults()
     if filename is not None:
       self.parse(filename)
+
+  # return True if found and parsed, False otherwise
+  def find_config_file(self):
+    # First, look on the command line
+    parser = OptionParser()
+    parser.add_option('-c','--config',dest='filename')
+    (opt_dict,args) = parser.parse_args()
+    if opt_dict.filename is not None:
+      if self.parse(opt_dict.filename):
+        return True
+      else:
+        warnings.warn('Failed to parse config file "'+str(options['filename'])+'", searching for another.')
+    # Next, look in the environment
+    if 'PROTOS_CONFIG' in os.environ:
+      if self.parse(os.environ['PROTOS_CONFIG']):
+        return True
+      else:
+        warnings.warn('Failed to parse config file "'+str(options['filename'])+'".')
+    return False
 
   def set_defaults(self):
     for (section,dct) in CONFIG_DEFAULTS.items():

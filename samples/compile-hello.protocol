@@ -1,10 +1,10 @@
+#!/usr/bin/env python
 # compile-hello.protocol
+
 import protos
+
 import subprocess as sub
 import os
-
-# Prerequisites
-protos.config('hello.config')
 
 # Set configuration variables
 dir  = protos.var('hello-dir',os.path.abspath('hello_dir'))

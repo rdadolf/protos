@@ -10,16 +10,22 @@
 
 import sys
 import workflow
+import config
 
 class Agent():
   def __init__(self, root_protocol_file):
-    self._flow = workflow.Workflow(root_protocol_file)
-    self._workq = self._flow.toposort()
-    self.run() # Does not return
+    self.run(root_protocol_file) # Does not return
 
-  def run(self):
-    assert self._flow is not None
-    assert self._workq is not None
+  def run(self, root_protocol_file):
+    # First, find a configuration file
+    self._options = config.Config()
+    assert self._options.find_config_file(), "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
+      
+    self._flow = workflow.Workflow(root_protocol_file)
+    assert self._flow is not None, "Failed to compile workflow. Maybe a malformed protocol file?"
+
+    self._workq = self._flow.toposort()
+    assert self._workq is not None, "Couldn't compute workflow dependencies. Maybe check for circular dependencies?"
 
     for work_item in self._workq:
       print 'EXEC: ',work_item
