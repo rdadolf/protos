@@ -9,15 +9,17 @@ import protocol
 import workflow
 
 def config(protocol):
-  print 'CONFIG'
+  print '[stub] CONFIG'
 
 def require(protocol):
-  print workflow.__name__
-  print 'REQUIRE'
+  print '[stub] REQUIRE'
+
+def cache(data):
+  print '[stub] CACHE'
 
 def log(data):
-  print 'LOG'
+  print '[stub] LOG'
 
 def var(name,value=None):
-  print 'VAR'
+  print '[stub] VAR'
   return value
