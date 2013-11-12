@@ -6,6 +6,8 @@
 # Instead, we define it one place, separately, then jump through some hoops
 # here to import and define all those functions.
 
+import core.agent
+
 # Pull the Protos API
 from core.protos_api import FUNCTIONS
 
@@ -20,3 +22,21 @@ for f in FUNCTIONS:
 
 # Now clean up our namespace
 #del core
+
+################################################################################
+# Hijack control
+#
+# Unlike normal modules, protos doesn't provide functions. It assumes control of
+# the program and executes a dependent chain of protocols. The original script
+# is merely a convenient way of pointing protos to the last dependency in the
+# series.
+
+# This is a way to get the name of the original file caused us to be imported.
+# Protos should not be executed from an interactive session (you will not get
+# control returned to you).
+from __main__ import __file__ as root_protocol_file
+
+core.agent.Agent(root_protocol_file)
+
+# Control does not return, nothing should be below this line.
+################################################################################

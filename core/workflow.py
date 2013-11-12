@@ -104,5 +104,9 @@ class Workflow:
 
     return dict([(k,v[1]) for (k,v) in dependencies.items()]), filename_cache
 
+  def toposort(self):
+    warnings.warn('FIXME: replace with actual implementation') # FIXME
+    return self._deps.keys() # NOT topo-sorted
+
   def __repr__(self):
     return str(self._deps)

@@ -11,17 +11,33 @@ DEFAULT_CONFIG_DIR = '$HOME/.protos/config/'
  # Dict of dicts
 CONFIG_DEFAULTS = {
   'project' : {
-    'repo' : '',
-    # FIXME: protocol-path deprecated in favor of protocol-dir.
-    #        need to migrate expand_protocol_path once we write
-    #        the software controlling git clones.
-    'protocol-path' : '', # absolute location of protocol files
-    'protocol-dir' : '', # relative to project root (git clone root)
-    },
-  'log' : {
-    'repo' : '',
-    },
-  }
+    # Valid types are 'files','git','svn'
+    'type' : 'files',
+
+    # If project-type is 'git' or 'svn', project will be created if it does not
+    # exist at that location already.
+    'root' : '',
+
+    # The path prefix(es) to search, in order, for protocol files.
+    # Relative paths are relative to the 
+    'protocol-path' : '',
+
+    # Options for project-type=='git':
+    'git-repo' : '',
+    # Options
+  }, 'log' : {
+    # Valid types are 'files','git','svn'
+    'type' : 'files',
+
+    # If project-type is 'git' or 'svn', project will be created if it does not
+    # exist at that location already.
+    'log-root' : '',
+
+    # Options for log-type=='git':
+    'git-repo' : '',
+    #'git-branch-by-project-revision' : False, FIXME?
+  },
+}
 
 def expand_config_path(s):
   '''
