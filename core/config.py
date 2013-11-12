@@ -4,6 +4,7 @@
 
 import os
 import sys
+import warnings
 import ConfigParser
 from optparse import OptionParser
 
@@ -18,7 +19,7 @@ CONFIG_DEFAULTS = {
 
     # If project-type is 'git' or 'svn', project will be created if it does not
     # exist at that location already.
-    'root' : '',
+    'project-root' : '',
 
     # The path prefix(es) to search, in order, for protocol files.
     # Relative paths are relative to the 
@@ -40,6 +41,11 @@ CONFIG_DEFAULTS = {
     #'git-branch-by-project-revision' : False, FIXME?
   },
 }
+EXPAND_VARIABLES = [
+  ('project','project-root'),
+  ('project','protocol-path'),
+  ('log','log-root'),
+]
 
 def expand_config_path(s):
   '''
@@ -81,7 +87,6 @@ def expand_protocol_path(protocol,paths):
   suffix = '.protocol'
   for prefix in paths.split(':'):
     filename = os.path.join(prefix,protocol)
-    print 'TESTING',filename
     if os.path.exists(filename):
       return os.path.abspath(filename)
     path = filename+suffix
@@ -94,7 +99,11 @@ class Config:
   def __init__(self,filename=None):
     self._filename = None
     self._options = ConfigParser.SafeConfigParser()
+
+    # We set defaults so that we never have to worry about checking
+    # whether the dictionary *has* those options, only what they are.
     self.set_defaults()
+
     if filename is not None:
       self.parse(filename)
 
@@ -117,6 +126,12 @@ class Config:
         warnings.warn('Failed to parse config file "'+str(options['filename'])+'".')
     return False
 
+  def get(self,sect,var):
+    return self._options.get(sect,var)
+
+  def set(self,sect,var,val):
+    return self._options.set(sect,var,val)
+
   def set_defaults(self):
     for (section,dct) in CONFIG_DEFAULTS.items():
       if not self._options.has_section(section):
@@ -133,7 +148,38 @@ class Config:
       self._options = ConfigParser.SafeConfigParser()
       self.set_defaults()
       return False
+    return self.validate()
+
+  def validate(self):
+    # Expand environment variables in paths
+    for (sec,var) in EXPAND_VARIABLES:
+      tmp = self.get(sec,var)
+      self.set(sec,var,os.path.expandvars(tmp))
     return True
 
-  def get(self,sect,var):
-    return self._options.get(sect,var)
+  def expand_protocol_path(self, protocol_name):
+    ''' Returns absolute path for protocol_name, based on project-path config variable.'''
+    # Grab a couple of config variables
+    proot = self.get('project','project-root')
+    ppath = self.get('project','protocol-path')
+    assert proot is not '', 'No project root specified in configuration file.'
+    assert ppath is not '', 'No valid protocol paths specified in configuration file.'
+
+    if not protocol_name.endswith('.protocol'): # defensive
+      pname = protocol_name + '.protocol' # Add a .protocol extension automatically
+
+    # Now search through the directories until we find one.
+    for prefix in ppath.split(':'):
+      if prefix=='':
+        prefix='.'
+      filename = os.path.join(prefix, pname)
+      if os.path.isabs(prefix):
+        if os.path.exists(filename):
+          return filename
+      else:
+        filename = os.path.join(proot, filename)
+        if os.path.exists(filename):
+          return filename
+
+    warnings.warn('Failed to expand protocol "'+str(protocol_name)+'"')
+    return protocol_name

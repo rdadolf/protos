@@ -21,7 +21,7 @@ class Agent():
     self._options = config.Config()
     assert self._options.find_config_file(), "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
       
-    self._flow = workflow.Workflow(root_protocol_file)
+    self._flow = workflow.Workflow(root_protocol_file, self._options)
     assert self._flow is not None, "Failed to compile workflow. Maybe a malformed protocol file?"
 
     self._workq = self._flow.toposort()

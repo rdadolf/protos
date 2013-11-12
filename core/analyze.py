@@ -2,6 +2,7 @@
 # 
 # Parse and analyze protocol files for static-time information.
 
+import os
 import sys
 import ast
 import warnings
@@ -11,6 +12,15 @@ import protos_api
 PROTOS_NAME = 'protos'
 PROTOS_FUNCTIONS = protos_api.FUNCTIONS
 PROTOS_ALL = '*' # Magic value, value is arbitrary. It is NOT a list.
+
+def protocol_name_from_file(filename):
+  (prefix,name) = os.path.split(os.path.abspath(filename))
+  # All protocol names should, but let's be defensive.
+  if name.endswith('.protocol'):
+    return name[0:name.rfind('.protocol')]
+  else:
+    return name
+  
 
 class Analysis:
   def __init__(self,filename):
