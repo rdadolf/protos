@@ -28,7 +28,8 @@ class Agent():
     assert self._workq is not None, "Couldn't compute workflow dependencies. Maybe check for circular dependencies?"
 
     for work_item in self._workq:
-      print 'EXEC: ',work_item
+      pass
+      #print 'EXEC: ',work_item
 
     # All execution is complete. Do not return control to the user. Exit.
     sys.exit(0)

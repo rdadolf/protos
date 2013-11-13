@@ -33,19 +33,29 @@ class Workflow:
       workfile = configuration.expand_protocol_path(work)
       if work not in dependencies:
         # This should always be the case, but it's not fatal if it's not
-        dependencies[work] = (workfile, set([]))
+        dependencies[work] = set([])
       past_work.add(work)
 
       # Process all protocols
       analysis = analyze.Analysis(workfile)
       for dep in analysis.find_required_protocols():
         dependencies[work].add(dep)
+        if dep not in work_q and dep not in past_work:
+          work_q.append(dep)
 
     return dependencies
 
   def toposort(self):
-    warnings.warn('FIXME: replace with actual implementation') # FIXME
-    return self._deps.keys() # NOT topo-sorted
+    workingset = dict([(k,vs.copy()) for (k,vs) in self._deps.items()]) # copy
+    order = []
+    while len(workingset)>0:
+      leaves = [k for (k,v) in workingset.items() if len(v)==0]
+      for leaf in leaves:
+        order.append(leaf)
+        del workingset[leaf]
+      for k in workingset:
+        workingset[k] -= set(leaves)
+    return order
 
   def __repr__(self):
     return str(self._deps)
