@@ -8,17 +8,17 @@ Protos is:
 import protocol
 import workflow
 
-def config(protocol):
-  print '[stub] CONFIG'
-
-def require(protocol):
-  print '[stub] REQUIRE'
-
 def cache(data):
   print '[stub] CACHE'
 
 def log(data):
   print '[stub] LOG'
+
+def require(protocol):
+  print '[stub] REQUIRE'
+
+def tunnel(): #FIXME
+  print '[stub] TUNNEL'
 
 def var(name,value=None):
   print '[stub] VAR'

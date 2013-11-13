@@ -13,7 +13,7 @@ src  = os.path.join(dir,'hello.c')
 
 # Compile the program
 os.chdir(dir)
-sub.call('gcc -o '+prog+' '+src)
+sub.call(['gcc','-o',prog,src])
 
 # Cache the program binary
 protos.cache(prog)

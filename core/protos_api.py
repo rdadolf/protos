@@ -1,3 +1,9 @@
 # Protos user interface
 
-FUNCTIONS = [ 'require', 'cache', 'log', 'var' ]
+FUNCTIONS = [
+  'cache',
+  'log',
+  'require',
+  'tunnel',
+  'var',
+]

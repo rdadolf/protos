@@ -14,21 +14,31 @@ import config
 
 class Agent():
   def __init__(self, root_protocol_file):
-    self.run(root_protocol_file) # Does not return
+    self.run(root_protocol_file) # Hijack execution. Does not return.
 
   def run(self, root_protocol_file):
     # First, find a configuration file
-    self._options = config.Config()
-    assert self._options.find_config_file(), "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
+    self._configuration = config.Config()
+    assert self._configuration.find_config_file(), "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
       
-    self._flow = workflow.Workflow(root_protocol_file, self._options)
+    self._flow = workflow.Workflow(root_protocol_file, self._configuration)
     assert self._flow is not None, "Failed to compile workflow. Maybe a malformed protocol file?"
 
     self._workq = self._flow.toposort()
     assert self._workq is not None, "Couldn't compute workflow dependencies. Maybe check for circular dependencies?"
 
+    # Set up environment
+    # FIXME: project clone
+    # FIXME: log clone
+
+    # Execute DAG
     for work_item in self._workq:
-      pass
+      # load variable environment
+      # execute file with environment
+      execfile(self._configuration.expand_protocol_path(work_item), {}, {})
+      # log variables
+      # commit and push
+      
       #print 'EXEC: ',work_item
 
     # All execution is complete. Do not return control to the user. Exit.
