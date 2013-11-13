@@ -31,6 +31,7 @@ class Workflow:
       # Grab the top of the work queue, mark it looked-at
       work = work_q.pop()
       workfile = configuration.expand_protocol_path(work)
+      assert os.path.exists(workfile), 'Couldn\'t find protocol file "'+workfile+'". Maybe check your configuration or the protocol file?'
       if work not in dependencies:
         # This should always be the case, but it's not fatal if it's not
         dependencies[work] = set([])
@@ -50,6 +51,7 @@ class Workflow:
     order = []
     while len(workingset)>0:
       leaves = [k for (k,v) in workingset.items() if len(v)==0]
+      assert len(leaves)>0, 'Circular dependencies found.\nCurrent working set is: '+', '.join([k+'=>'+str(list(v)) for (k,v) in workingset.items()])
       for leaf in leaves:
         order.append(leaf)
         del workingset[leaf]

@@ -1,0 +1,3 @@
+#!/usr/bin/env python
+import protos
+protos.require('b')
