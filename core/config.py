@@ -117,13 +117,13 @@ class Config:
       if self.parse(opt_dict.filename):
         return True
       else:
-        warnings.warn('Failed to parse config file "'+str(options['filename'])+'", searching for another.')
+        warnings.warn('Failed to parse config file "'+str(opt_dict.filename)+'", searching for another.')
     # Next, look in the environment
     if 'PROTOS_CONFIG' in os.environ:
       if self.parse(os.environ['PROTOS_CONFIG']):
         return True
       else:
-        warnings.warn('Failed to parse config file "'+str(options['filename'])+'".')
+        warnings.warn('Failed to parse config file "'+str(opt_dict.filename)+'".')
     return False
 
   def get(self,sect,var):
@@ -141,7 +141,9 @@ class Config:
 
   def parse(self,filename):
     path = expand_config_path(filename)
+    assert path is not None, "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
     self._filename = path
+    assert os.path.exists(path) and os.path.isfile(path), "Couldn't find a valid config file. Try -c <file> or setting PROTOS_CONFIG."
     if( self._options.read(path)==[] ):
       # It didn't work. Blow the garbage away and reinitialize.
       self._filename = None
