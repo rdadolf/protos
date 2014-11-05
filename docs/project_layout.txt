@@ -1,0 +1,12 @@
+# Laying out a Protos project
+
+Protos expects a specific project layout, and it uses that assumption to infer where files should be located.
+
+
+project/
+  data/
+    <experiment data directories>
+  experiments/
+    <experiment files>
+  protocols/
+    <protocol files>

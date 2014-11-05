@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+
+import sys
+import os
+import os.path
+import logging
+logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s|%(filename)s:%(lineno)s] %(message)s')
+import argparse
+import types
+
+from protos.config import Configuration
+from protos.fs_layout import infer_from_exf
+from protos.experiment_support import Experiment, experiment
+from protos.protocol_support import protocol
+from protos.data_bundles import Token_Generator
+
+################################################################################
+
+def load_exf(exf,config):
+  ''' Reads an experiment file and returns an Experiment object. '''
+  with open(exf) as f:
+    code = f.read()
+    globs = dict()
+    # A bit faster, but more importantly, associates a filename to errors
+    program = compile(code,exf,'exec')
+    logging.debug('load_exf globs: '+str(globs.keys()))
+    # using the same dict makes exec behave as if it's in the global
+    # namespace. Otherwise, import statements don't work.
+    exec(program,globs,globs)
+
+    # Find all functions tagged as experiments
+    ex_list = [v for (k,v) in globs.items() if isinstance(v,experiment)]
+
+    return ex_list
+
+# Create a dictionary of functions 
+def load_protocols(protocol_dir):
+  # Find protocols directory
+  pdir=os.path.realpath=protocol_dir
+  if not os.path.isdir(pdir):
+    logging.error('Invalid protocol directory: '+pdir)
+
+  # For each file, load the protocols contained within
+  protocols = dict()
+  for (dpath, dnames, fnames) in os.walk(pdir,followlinks=True):
+    for file in fnames:
+      if file.endswith('.py'): # Hack
+        name = file[:-3] # Hack
+        path = os.path.join(dpath,file)
+        with open(path) as f:
+          code = f.read()
+          globs = dict()
+          program = compile(code,path,'exec')
+          # using the same dict makes exec behave as if it's in the global
+          # namespace. Otherwise, import statements don't work.
+          exec(program, globs, globs)
+          for (name,thing) in globs.items():
+            if isinstance(thing,protocol):
+              logging.debug('Providing protocol "'+name+'":')
+              protocols[name] = thing
+
+  logging.debug('Protocols: '+str(list(protocols.keys())))
+  return protocols
+
+def augment_experiment(experiment, protocol_dict):
+  # This will let us "call" functions in the experiment (which looks like a
+  # "protocol" pseudo-module to the user), but it actually just adds them to
+  # the internal experiment schedule which will be run later.
+  def gen_adder_f(name,func):
+    def exp_adder_f(self,*args,**kwargs):
+      self._add(func, args, kwargs)
+      return Token_Generator.new()
+    return exp_adder_f
+  for (name,func) in protocol_dict.items():
+    f = gen_adder_f(name,func)
+    f.__name__ = name
+    setattr(experiment,name,types.MethodType(f,experiment))
+  logging.debug('Experiment: '+str(experiment.__dict__))
+  return experiment
+
+def local_run(exp_list, protocol_dict, config):
+  # currently, we only run one experiment
+  # TODO: this assumption shouldn't be that hard to change
+
+  try:
+    exp_fn = exp_list[0]
+  except IndexError:
+    logging.error('No experiment function found')
+    return None
+
+  exp_monad = Experiment()
+
+  # Prime the experiment with all of the protocol functions
+  augment_experiment(exp_monad, protocol_dict)
+  # Run the experiment function to produce an experiment
+  exp = exp_fn(exp_monad)
+  # Now run it locally
+  logging.debug('Exps are same? '+str(exp is exp_monad))
+  exp._run()
+  pass
+
+def condor_run(experiment, protocol_dict, config):
+  pass
+
+################################################################################
+
+def main():
+
+  # Handle command line flags
+  parser = argparse.ArgumentParser()
+  parser.add_argument('experiment')
+  #parser.add_argument('-r','--restart',action='store_true',help='Remove all prior data and re-run the experiment ')
+  parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
+  args = parser.parse_args()
+
+  # Find the experiment file we're going to work on.
+  #args=sys.argv[1:]
+  #if len(args)==0:
+  #  print('Usage: protos <experiment-file>')
+  #  sys.exit(-1)
+  #experiment = sys.argv[1]
+  if not os.path.isfile(args.experiment):
+    logging.error('Could not find experiment file: '+args.experiment)
+    sys.exit(-1)
+  exf=os.path.realpath(args.experiment)
+
+  logging.debug('Running experiment:'+str(exf)) # DEBUG
+
+  # Setup parameters and run
+  config = Configuration()
+  
+  infer_from_exf(exf,config)
+  logging.debug('Protocols directory'+str(config['protocol_dir']))
+  protocol_dict = load_protocols(config['protocol_dir'])
+  exp_list = load_exf(exf, config)
+
+  # if local:
+  if args.where=='local':
+    local_run(exp_list, protocol_dict, config)
+  elif args.where=='condor':
+    condor_run(exp_list, protocol_dict, config)
+
+if __name__=='__main__':
+  main()
+
