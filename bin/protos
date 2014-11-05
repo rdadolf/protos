@@ -67,15 +67,21 @@ def augment_experiment(experiment, protocol_dict):
   # "protocol" pseudo-module to the user), but it actually just adds them to
   # the internal experiment schedule which will be run later.
   def gen_adder_f(name,func):
+    # This is the function that will get called when an experiment function
+    # is run. It queues up the actual protocol that it shadows and returns a
+    # data bundle token. This is just a placeholder that can be used to chain
+    # data through an experiment. The actual protocols will use protos to
+    # turn the tokens into references to actual Data Bundle objects.
     def exp_adder_f(self,*args,**kwargs):
-      self._add(func, args, kwargs)
-      return Token_Generator.new()
+      data_tok = Token_Generator.new()
+      self._add(func, data_tok, args, kwargs)
+      return data_tok
     return exp_adder_f
   for (name,func) in protocol_dict.items():
     f = gen_adder_f(name,func)
     f.__name__ = name
     setattr(experiment,name,types.MethodType(f,experiment))
-  logging.debug('Experiment: '+str(experiment.__dict__))
+  #logging.debug('Experiment: '+str(experiment.__dict__))
   return experiment
 
 def local_run(exp_list, protocol_dict, config):
