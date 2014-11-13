@@ -1,7 +1,8 @@
 import logging
 import os.path
+import tempfile
+import shutil
 
-################################################################################
 # Expected project layout
 # 
 # project/
@@ -34,3 +35,24 @@ def infer_from_exf(exf_path,config):
   config.data_dir = data_dir
 
   return True
+
+
+# Python context for temporary directory
+class scratch_directory:
+  def __init__(self, debug=False):
+    self.debug = debug # Preservers contents of 
+    self.dir = None
+  def __enter__(self):
+    self.dir = tempfile.mkdtemp(prefix='/tmp/protos_temp_')
+    logging.debug('Creating scratch directory '+self.dir)
+    return self.dir
+  def __exit__(self, type, value, traceback):
+    if not self.debug:
+      logging.debug('Cleaning up scratch directory '+self.dir)
+      # recursively delete whatever is in the scratch space
+      assert os.path.isdir(self.dir), 'Scratch directory not found--something is wrong'
+      assert len(self.dir)>1, 'Bad scratch directory name: "'+str(self.dir)+'"'
+      shutil.rmtree(self.dir)
+    return False # Don't suppress errors
+
+

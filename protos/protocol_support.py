@@ -1,9 +1,7 @@
+import sys
 import logging
 import json
-import os
-import os.path
-import shutil
-import tempfile
+import subprocess as sub
 
 from .data_bundles import Data_Bundle
 from .config import config
@@ -26,38 +24,18 @@ class protocol:
 def home():
   return config.project_dir
 
-# Python context for temporary directory
-class scratch_directory:
-  def __init__(self, debug=False):
-    self.debug = debug # Preservers contents of 
-    self.dir = None
-  def __enter__(self):
-    self.dir = tempfile.mkdtemp(prefix='/tmp/protos_temp_')
-    logging.debug('Creating scratch directory '+self.dir)
-    return self.dir
-  def __exit__(self, type, value, traceback):
-    if not self.debug:
-      logging.debug('Cleaning up scratch directory '+self.dir)
-      # recursively delete whatever is in the scratch space
-      assert os.path.isdir(self.dir), 'Scratch directory not found--something is wrong'
-      assert len(self.dir)>1, 'Bad scratch directory name: "'+str(self.dir)+'"'
-      shutil.rmtree(self.dir)
-    return False # Don't suppress errors
-
-# Metadata reading/writing
-def read_metadata(file): # returns dictionary
-  '''
-  Reads a metadata file and returns a python dictionary of its contents.
-  '''
-  with open(file) as f:
-    d=json.load(f)
-    return d
-
-def write_metadata(file,md):
-  '''
-  Writes a dictionary into a metadata file for later use.
-  '''
-  with open(file,'w') as f:
-    json.dump(md,f,indent='2')
-
+# Convenience wrapper for subprocess
+def call(cmd):
+  # FIXME: do more here? maybe w/ logging
+  logging.debug('Running "'+cmd+'"')
+  proc = sub.Popen( cmd, shell=True, stdout=sub.PIPE, stderr=sub.PIPE )
+  ret=proc.wait()
+  (out,err) = proc.communicate()
+  (s_out,s_err) = (out.decode(sys.stdout.encoding),err.decode(sys.stderr.encoding))
+  if len(s_out)>0:
+    logging.debug(s_out)
+  if len(s_err)>0:
+    logging.error(s_err)
+  assert ret==0, 'Failed to run "'+cmd+'"'
+  return (out,err)
 

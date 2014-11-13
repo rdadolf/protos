@@ -22,7 +22,7 @@ class Bundle_Token:
     return 'Bundle_Token('+str(self.id)+')'
 
 class Token_Generator:
-  bundle_id = 0
+  bundle_id = 0 # must be integer
 
   @classmethod
   def new(self):
@@ -32,24 +32,33 @@ class Token_Generator:
 
 # This is the actual reference to the data that a protocol generates.
 class Data_Bundle:
-  def __init__(self, experiment, tag_prefix='unnamed'):
-    self._tag = '<'+str(tag_prefix)+' data bundle>'
+  def __init__(self, xdata, prefix='unnamed'):
+    # Make sure we were passed an experiment data dictionary
+    assert 'path' in xdata, 'Bundles must be passed experiment data when created'
+    assert 'bundle_tag' in xdata, 'Bundles must be passed experiment data when created'
+
+    self._prefix = prefix
+    self._tag = xdata['bundle_tag']
+    self._name = 'stage{number:03d}_{prefix}'.format( number=self._tag, prefix=self._prefix )
 
     # User-facing attributes
-    self.experiment = experiment
+    self.xdata = xdata # dict
     self.metadata = dict()
     self.files = []
-    self.directory = os.path.join(experiment.path, tag_prefix+'.bundle')
+    self.directory = os.path.join(xdata['path'], self._name+'.bundle')
 
     # Setup
     self._create_directory()
     pass
 
   def __str__(self):
-    return self._tag
+    return '<'+self._name+' data bundle>'
+
+  def _set_id(self):
+    self.tag
 
   def _create_directory(self):
-    os.chdir(self.experiment.path)
+    os.chdir(self.xdata['path'])
 
     if not os.path.isdir(self.directory):
       os.mkdir(self.directory)
@@ -58,7 +67,7 @@ class Data_Bundle:
 
       # Defensive programming
       assert len(self.directory)>1, 'empty bundle directory: '+str(self.directory)
-      assert self.experiment.path in self.directory, 'errant bundle directory: '+str(self.directory)
+      assert self.xdata['path'] in self.directory, 'errant bundle directory: '+str(self.directory)
       shutil.rmtree(self.directory)
       os.mkdir(self.directory)
 
@@ -85,9 +94,8 @@ class Data_Bundle:
     bundle_info = {
       'files': self.files,
       'directory': self.directory,
-      'experiment': None
+      'xdata': self.xdata
     }
-    # note: experiment is not portable
     json.dump( bundle_info, bundle_file, indent=2 )
 
     return True

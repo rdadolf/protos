@@ -5,22 +5,22 @@ from functools import reduce
 
 from .data_bundles import Data_Bundle, Bundle_Token
 from .config import config
+from .fs_layout import scratch_directory
 
-class Experiment_Data:
-  def __init__(self):
-    self.path = ''
+# Experiment Data:
+#   'path' => path to the experiment data directory
+#   'bundle_tag' => current bundle token id, a unique, monotonically increasing integer
 
 class Experiment:
   # Be careful, this class is exposed to the user. Don't let stray data escape.
   def __init__(self,exp_deco):
     self._schedule = []
     self._bundles = {}
-    self._data = Experiment_Data()
-
-    self._data.path = reduce(os.path.join, [config.data_dir, exp_deco.name])
-    if not os.path.isdir(self._data.path):
-      os.mkdir(self._data.path)
-    logging.debug('Experiment directory is: '+str(self._data.path))
+    self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
+    self._name = exp_deco.name
+    if not os.path.isdir(self._path):
+      os.mkdir(self._path)
+    logging.debug('Experiment directory is: '+str(self._path))
 
     pass
 
@@ -30,9 +30,10 @@ class Experiment:
     self._bundles[data_tok] = None
     pass
 
+
   def _run(self):
     #logging.debug('Running experiment')
-    print('--- Running Experiment ---')
+    print('--- Running Experiment "'+str(self._name)+'" ---')
 
     # FIXME: incremental progress is not handled
     #        we'll need to use _read_from_disk() to grab previous results
@@ -45,13 +46,22 @@ class Experiment:
         if isinstance(v,Bundle_Token):
           # FIXME: inverted data dependencies can cause this lookup to fail
           kw[k] = self._bundles[v.id]
+
       # Now run the function and store the resulting bundle object
-      bundle = f(self._data,*a,**kw)
-      assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
+      exp_data = { 'path': self._path, 'bundle_tag': tok.id }
+      with scratch_directory() as d:
+        os.chdir(d)
+        # FIXME: Capture timing information?
+        print('  Running protocol '+str(f.__name__))
+        bundle = f(exp_data,*a,**kw)
+        assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
+
+      # Now persist the bundle, for the record and for incremental re-eval later
       bundle._write_to_disk()
 
       self._bundles[tok.id] = bundle
-    pass
+    print('Done.')
+    return True
 
 
 # Experiment decorator
