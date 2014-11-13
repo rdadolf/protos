@@ -1,6 +1,5 @@
 import sys
 import logging
-import json
 import subprocess as sub
 
 from .data_bundles import Data_Bundle

@@ -51,15 +51,13 @@ class Data_Bundle:
     self._create_directory()
     pass
 
-  def __str__(self):
+  def __repr__(self):
     return '<'+self._name+' data bundle>'
 
   def _set_id(self):
     self.tag
 
   def _create_directory(self):
-    os.chdir(self.xdata['path'])
-
     if not os.path.isdir(self.directory):
       os.mkdir(self.directory)
     if os.path.isdir(self.directory) and config.reset:
@@ -110,7 +108,7 @@ class Data_Bundle:
 
   def add_file(self, f):
     abs_f = os.path.abspath(f)
-    assert os.path.isfile(abs_f), 'No file "'+str(abs_f)+'" to add to '+str(self._tag)
+    assert os.path.isfile(abs_f), 'No file "'+str(abs_f)+'" to add to '+str(self)
     shutil.copy(abs_f,self.directory)
     new_name = os.path.join( self.directory, os.path.basename(abs_f) )
     self.files.append(new_name)
