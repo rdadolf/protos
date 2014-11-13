@@ -4,7 +4,7 @@ import sys
 import os
 import os.path
 import logging
-logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s|%(filename)s:%(lineno)s] %(message)s')
+logging.basicConfig(level=logging.WARN, format='[%(levelname)s|%(filename)s:%(lineno)s] %(message)s')
 import argparse
 import types
 
@@ -115,7 +115,11 @@ def main():
   parser.add_argument('experiment')
   #parser.add_argument('-r','--restart',action='store_true',help='Remove all prior data and re-run the experiment ')
   parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
+  parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
   args = parser.parse_args()
+
+  if args.verbose:
+    logging.getLogger().setLevel(logging.DEBUG)
 
   # Find the experiment file we're going to work on.
   #args=sys.argv[1:]
