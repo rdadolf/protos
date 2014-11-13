@@ -1,12 +1,11 @@
+import logging
 
-class Configuration:
-  def __init__(self):
-    self.params = dict()
-  # Can act like a dict for arbitrary parameters
-  def __len__(self):
-    return len(self.params)
-  def __getitem__(self,k):
-    return self.params[k]
-  def __setitem__(self,k,v):
-    self.params[k]=v
+class config:
+  # Locations
+  experiments_dir = ''
+  project_dir = ''
+  protocol_dir = ''
+  data_dir = ''
 
+  # Behavior
+  reset = True

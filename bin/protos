@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s|%(filename)s:%(l
 import argparse
 import types
 
-from protos.config import Configuration
+from protos.config import config
 from protos.fs_layout import infer_from_exf
 from protos.experiment_support import Experiment, experiment
 from protos.protocol_support import protocol
@@ -17,13 +17,12 @@ from protos.data_bundles import Token_Generator
 ################################################################################
 
 def load_exf(exf,config):
-  ''' Reads an experiment file and returns an Experiment object. '''
+  ''' Reads an experiment file and returns a list of experiment decorator classes. '''
   with open(exf) as f:
     code = f.read()
     globs = dict()
     # A bit faster, but more importantly, associates a filename to errors
     program = compile(code,exf,'exec')
-    logging.debug('load_exf globs: '+str(globs.keys()))
     # using the same dict makes exec behave as if it's in the global
     # namespace. Otherwise, import statements don't work.
     exec(program,globs,globs)
@@ -59,7 +58,7 @@ def load_protocols(protocol_dir):
               logging.debug('Providing protocol "'+name+'":')
               protocols[name] = thing
 
-  logging.debug('Protocols: '+str(list(protocols.keys())))
+  #logging.debug('Protocols: '+str(list(protocols.keys())))
   return protocols
 
 def augment_experiment(experiment, protocol_dict):
@@ -94,14 +93,13 @@ def local_run(exp_list, protocol_dict, config):
     logging.error('No experiment function found')
     return None
 
-  exp_monad = Experiment()
+  exp_monad = Experiment(exp_fn)
 
   # Prime the experiment with all of the protocol functions
   augment_experiment(exp_monad, protocol_dict)
   # Run the experiment function to produce an experiment
   exp = exp_fn(exp_monad)
   # Now run it locally
-  logging.debug('Exps are same? '+str(exp is exp_monad))
   exp._run()
   pass
 
@@ -133,11 +131,9 @@ def main():
   logging.debug('Running experiment:'+str(exf)) # DEBUG
 
   # Setup parameters and run
-  config = Configuration()
-  
   infer_from_exf(exf,config)
-  logging.debug('Protocols directory'+str(config['protocol_dir']))
-  protocol_dict = load_protocols(config['protocol_dir'])
+  logging.debug('Protocols directory: '+str(config.protocol_dir))
+  protocol_dict = load_protocols(config.protocol_dir)
   exp_list = load_exf(exf, config)
 
   # if local:

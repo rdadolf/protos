@@ -1,12 +1,12 @@
 # Select the features we need
-from .config import Configuration
-from .protocol_support import protocol
+from .protocol_support import protocol, home, scratch_directory
 from .experiment_support import experiment
+from .data_bundles import Data_Bundle as Bundle
 # Clean up namespace
-del config, protocol_support, experiment_support
+del protocol_support, experiment_support
 # Export those features
 __all__=[\
-  'Configuration', \
-  'protocol', \
-  'experiment'
+  'protocol', 'home', 'scratch_directory',\
+  'experiment',\
+  'Bundle'
 ]

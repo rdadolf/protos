@@ -28,9 +28,9 @@ def infer_from_exf(exf_path,config):
   data_dir = os.path.join(os.path.dirname(experiments_dir),'data')
 
   # Pass to experiment configuration
-  config['experiments_dir'] = experiments_dir
-  config['project_dir'] = project_dir
-  config['protocol_dir'] = protocol_dir
-  config['data_dir'] = data_dir
+  config.experiments_dir = experiments_dir
+  config.project_dir = project_dir
+  config.protocol_dir = protocol_dir
+  config.data_dir = data_dir
 
   return True
