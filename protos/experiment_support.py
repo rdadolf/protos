@@ -18,6 +18,9 @@ class Experiment:
     self._bundles = {}
     self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
     self._name = exp_deco.name
+    if not os.path.isdir(config.data_dir):
+      logging.debug('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"')
+      os.mkdir(config.data_dir)
     if not os.path.isdir(self._path):
       os.mkdir(self._path)
     logging.debug('Experiment directory is: '+str(self._path))
