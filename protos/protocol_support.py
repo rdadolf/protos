@@ -27,14 +27,15 @@ def home():
 def call(cmd):
   # FIXME: do more here? maybe w/ logging
   logging.debug('Running "'+cmd+'"')
-  proc = sub.Popen( cmd, shell=True, stdout=sub.PIPE, stderr=sub.PIPE )
-  ret=proc.wait()
+  proc = sub.Popen( cmd, shell=True, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines = True )
   (out,err) = proc.communicate()
-  (s_out,s_err) = (out.decode(sys.stdout.encoding),err.decode(sys.stderr.encoding))
-  if len(s_out)>0:
-    logging.debug(s_out)
-  if len(s_err)>0:
-    logging.error(s_err)
+  ret = proc.returncode
+  if len(out)>0:
+    for l in out.split('\n'):
+      logging.debug(l)
+  if len(err)>0:
+    for l in err.split('\n'):
+      logging.error(l)
   assert ret==0, 'Failed to run "'+cmd+'"'
   return (out,err)
 
