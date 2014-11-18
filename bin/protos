@@ -114,12 +114,15 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('experiment')
   #parser.add_argument('-r','--restart',action='store_true',help='Remove all prior data and re-run the experiment ')
-  parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
+  parser.add_argument('--preserve',action='store_true',help='Prevents temporary directories from being cleaned up. Caution! This creates a lot of garbage in /tmp.')
+  #parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
   parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
   args = parser.parse_args()
 
   if args.verbose:
     logging.getLogger().setLevel(logging.DEBUG)
+  if args.preserve:
+    config.preserve = True
 
   # Find the experiment file we're going to work on.
   #args=sys.argv[1:]
@@ -141,10 +144,10 @@ def main():
   exp_list = load_exf(exf, config)
 
   # if local:
-  if args.where=='local':
-    local_run(exp_list, protocol_dict, config)
-  elif args.where=='condor':
-    condor_run(exp_list, protocol_dict, config)
+  #if args.where=='local':
+  local_run(exp_list, protocol_dict, config)
+  #elif args.where=='condor':
+  #  condor_run(exp_list, protocol_dict, config)
 
 if __name__=='__main__':
   main()

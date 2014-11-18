@@ -3,6 +3,8 @@ import os.path
 import tempfile
 import shutil
 
+from .config import config
+
 # Expected project layout
 # 
 # project/
@@ -39,15 +41,14 @@ def infer_from_exf(exf_path,config):
 
 # Python context for temporary directory
 class scratch_directory:
-  def __init__(self, debug=False):
-    self.debug = debug # Preservers contents of 
+  def __init__(self):
     self.dir = None
   def __enter__(self):
     self.dir = tempfile.mkdtemp(prefix='/tmp/protos_temp_')
     logging.debug('Creating scratch directory '+self.dir)
     return self.dir
   def __exit__(self, type, value, traceback):
-    if not self.debug:
+    if not config.preserve:
       logging.debug('Cleaning up scratch directory '+self.dir)
       # recursively delete whatever is in the scratch space
       assert os.path.isdir(self.dir), 'Scratch directory not found--something is wrong'
