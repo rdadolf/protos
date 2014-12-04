@@ -7,10 +7,11 @@ import logging
 logging.basicConfig(level=logging.WARN, format='[%(levelname)s|%(filename)s:%(lineno)s] %(message)s')
 import argparse
 import types
+from functools import reduce
 
 from protos.config import config
 from protos.fs_layout import infer_from_exf
-from protos.experiment_support import Experiment, experiment
+from protos.experiment_support import Namespace, Experiment, experiment
 from protos.protocol_support import protocol
 from protos.data_bundles import Token_Generator
 
@@ -34,32 +35,105 @@ def load_exf(exf,config):
 
 # Create a dictionary of functions 
 def load_protocols(protocol_dir):
-  # Find protocols directory
+  # First, find the protocols directory
   pdir=os.path.realpath=protocol_dir
   if not os.path.isdir(pdir):
     logging.error('Invalid protocol directory: '+pdir)
 
-  # For each file, load the protocols contained within
-  protocols = dict()
-  for (dpath, dnames, fnames) in os.walk(pdir,followlinks=True):
-    for file in fnames:
-      if file.endswith('.py'): # Hack
-        name = file[:-3] # Hack
-        path = os.path.join(dpath,file)
-        with open(path) as f:
-          code = f.read()
-          globs = dict()
-          program = compile(code,path,'exec')
-          # using the same dict makes exec behave as if it's in the global
-          # namespace. Otherwise, import statements don't work.
-          exec(program, globs, globs)
-          for (name,thing) in globs.items():
-            if isinstance(thing,protocol):
-              logging.debug('Providing protocol "'+name+'":')
-              protocols[name] = thing
+  # Protocols are allowed to load modules from the protocol directory.
+  # This can be used for things like data bundle class definitions.
+  # To enable this, we need to add the protocol directory to sys.path.
+  sys.path.append(pdir) # FIXME: test this--why is it passed to exec children?
 
-  #logging.debug('Protocols: '+str(list(protocols.keys())))
+  # Next, create a list of protocol files, relative to the protocol directory.
+  # Protocol files can be stored in subdirectories, and they can be interspersed
+  # with non-protocol python files (like supporting libraries and other scripts)
+  # which means that we prefer to use an explicit list of files to load.
+  #   1) check for a protocol.index file
+  # In the case that we can't find one, we warn, then assume that the user is
+  # just being lazy and that *all* python files in all subdirectories are
+  # valid protocol files. FIXME This is a little dangerous, should we change it?
+  #   2) fall back on recursively searching for all .py files
+  protocol_files = []
+  # 1) protocol.index
+  index_file = os.path.join(pdir,'protocol.index')
+  if os.path.isfile(index_file):
+    with open(index_file) as idx:
+      for Lraw in idx:
+        L = Lraw.strip()
+        if len(L)>0 and not L.startswith('#'): # ignore blank and comment lines
+          if os.path.isabs(L):
+            protos.warn('Use relative paths in protocol index files')
+            protos.warn('Ignoring protocol "'+L+'"')
+          else:
+            protocol_files.append(L)
+  # 2) recursive search for .py
+  else:
+    protocol_files = [os.path.join(dpath,fname) for (dpath,_,fname) in os.walk(pdir,followlinks=True) if fname.endswith('.py')]
+  logging.debug('All protocol files are:\n  '+'\n  '.join(protocol_files))
+
+  # All these protocols will eventually have their names converted to dotted
+  # lists which will be used by python. Thus, the directories that contain them
+  # cannot have .'s in their names. Let's just disallow this. The alternative
+  # would be to convert them to _'s or something, but that seems like it could 
+  # be even more confusing to a user.
+  vetted = []
+  for filename in protocol_files:
+    (head,tail) = os.path.split(filename)
+    if '.' in head:
+      logging.warn('Protocol files must not have dot\'s in their paths. This will lead to misery in experiment files. Please rename "'+filename+'"')
+    else:
+      vetted.append(filename)
+  protocol_files = vetted
+
+  # Now we exec() each file and generate a list of the protocol functions that
+  # were defined. We'll also convert the name of function into a dotted list.
+  # (e.g.- @protocol "foo" in $PDIR/subdir/file.py becomes "subdir.file.foo")
+  protocols = dict()
+  for filename in protocol_files:
+    filepath = os.path.join(pdir,filename)
+    with open(filepath) as f:
+      code = f.read()
+      scope = dict()
+      program = compile(code,filepath,'exec')
+      # using the same scope dict makes exec behave as if it's in the global
+      # namespace. Otherwise, import statements don't work. (Python quirk)
+      exec(program, scope, scope)
+
+      # Now dig through the objects defined by the program and pick out all
+      # of the things that are protocol-decorated functions.
+      for (func_name,thing) in scope.items():
+        if isinstance(thing, protocol):
+          # Convert to dotted name:
+          # 1) Convert path to dotted string. (foo/bar => foo.bar)
+          # 2) Strip suffix(es) from file name. (file.py => file)
+          #   WARNING: This strips *all* suffixes, because dot's are disallowed.
+          #            So "file.v1.py" becomes "file"
+          # 3) Append protocol function name. ("foo" => path.name.foo)
+          (head,tail) = os.path.split(filename)
+          front = head.replace(os.sep, '.') # 1)
+          middle = tail.split('.')[0] # 2)
+          back = func_name
+          name = '.'.join([front,middle,back])
+          # Later, we'll convert all the front and middle pieces into Namespace
+          # objects and the back piece into a thunk. This just sets the stage.
+
+          logging.info('Providing protocol "'+name+'":')
+          protocols[name] = thing
+
   return protocols
+
+#def print_hierarchical_ns(obj,indent=''):
+#  if indent=='':
+#    print('---PRINTING NAMESPACE TREE---------------------------------')
+#  for (k,v) in obj.__dict__.items():
+#    if isinstance(v,Namespace):
+#      print(indent,k,v)
+#      print_hierarchical_ns(v,indent+'  ')
+#    else:
+#      print(indent,'? ',k,v)
+#  if indent=='':
+#    print('-----------------------------------------------------------')
 
 def augment_experiment(experiment, protocol_dict):
   # This will let us "call" functions in the experiment (which looks like a
@@ -73,14 +147,38 @@ def augment_experiment(experiment, protocol_dict):
     # turn the tokens into references to actual Data Bundle objects.
     def exp_adder_f(self,*args,**kwargs):
       data_tok = Token_Generator.new()
-      self._add(func, data_tok, args, kwargs)
+      # We're a method of the leaf namespace, but the experiment is the root
+      #print_hierarchical_ns(self)
+      nsroot = self._nsroot
+      nsroot._add(func, data_tok, args, kwargs)
       return data_tok
     return exp_adder_f
-  for (name,func) in protocol_dict.items():
-    f = gen_adder_f(name,func)
-    f.__name__ = name
-    setattr(experiment,name,types.MethodType(f,experiment))
-  #logging.debug('Experiment: '+str(experiment.__dict__))
+  for (dotted_name,func) in protocol_dict.items():
+    #print_hierarchical_ns(experiment,'')
+    # Protocol names are hierarchical (e.g.- foo.bar.file.protocol), so when
+    # referencing them in an experiment, we actually need to create a chain of
+    # objects named foo, bar, and file before we can attach a protocol function.
+    # We do this using proxy objects called "Namespaces". They're just empty
+    # named classes that we chain together so protocols have a broader namespace.
+    name_chain = dotted_name.split('.')
+    # Namespaces may overlap. Check if we already added it (and assert it's a NS)
+    obj = experiment # root of the namespace chain
+    for ns in name_chain[:-1]: # The first n-1 names are namespace objects
+      attr = getattr(obj, ns, None)
+      if attr is not None:
+        assert isinstance(attr,Namespace), 'Namespace collision with protocol sub-name "'+ns+'". Please rename this directory'
+        obj = attr
+      else:
+        new_obj = Namespace(experiment) # points to root of namespace (to _add)
+        setattr(obj, ns, new_obj)
+        obj = new_obj        
+    # The last object is the thunk that will add the protocol to the experiment.
+    f = gen_adder_f(name_chain[-1], func)
+    f.__name__ = name_chain[-1]
+    # types.MethodType is a constructor for a bound class method
+    # f (an exp_adder_f) is bound to the last namespace
+    setattr(obj,f.__name__,types.MethodType(f,obj))
+
   return experiment
 
 def local_run(exp_list, protocol_dict, config):
@@ -120,7 +218,7 @@ def main():
   args = parser.parse_args()
 
   if args.verbose:
-    logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually
   if args.preserve:
     config.preserve = True
 
@@ -135,7 +233,7 @@ def main():
     sys.exit(-1)
   exf=os.path.realpath(args.experiment)
 
-  logging.debug('Running experiment:'+str(exf)) # DEBUG
+  logging.info('Running experiment:'+str(exf)) # DEBUG
 
   # Setup parameters and run
   infer_from_exf(exf,config)

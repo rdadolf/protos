@@ -7,9 +7,37 @@ from .data_bundles import Data_Bundle, Bundle_Token
 from .config import config
 from .fs_layout import scratch_directory
 
-# Experiment Data:
-#   'path' => path to the experiment data directory
-#   'bundle_tag' => current bundle token id, a unique, monotonically increasing integer
+# Namespace is a placeholder class for allowing hierarchy in protocol names.
+# This is a little tricky. We add protocol names to the Experiment instance
+# at runtime, but since protocols are fake-invoked using the same dot syntax
+# normal class attribute lookups, we have to also populate the dictionaries.
+# For example, an experiment contains this:
+#
+# @protos.experiment
+# def example(protocols):
+#   var = protocols.directory.filename.protocol_function(args)
+#
+# When we actually run the example function (which is an experiment), we're
+# actually just populating the _schedule of an Experiment instance with a list
+# of what protocols *will be* called. So "protocol_function" should be scheduled
+# when the experiment is actually run. To do this, when protos loads all the
+# protocol functions in the first place, it replaces them with thunks that add
+# themselves to the experiment instance. Unfortunately, what it's replacing is
+# the whole name '.directory.filename.protocol_function' attribute of the 
+# experiment, which isn't just one entity. It's actually a chain of attribute
+# lookups, first finding 'directory' in the experiment, then 'filename' in 
+# whatever thing is returned from that lookup, etc. *This stub class is that
+# thing.*  Basically, it allows a chain of attribute lookups in an experiment. 
+# So the example above will turn into:
+# (at experiment-construction time:)
+#   getattr( protocols, 'directory' ) => Namespace n0
+#   getattr( n0, 'filename' ) => Namespace n1
+#   getattr( n1, 'protocol_function' ) => anonymous protocol thunk
+#   <call anonymous protocol thunk> => adds protocol function and returns a token
+# The protos protocol loader would have constructed the chain of n0,n1,etc.
+class Namespace:
+  def __init__(self, nsroot):
+    self._nsroot = nsroot
 
 class Experiment:
   # Be careful, this class is exposed to the user. Don't let stray data escape.
@@ -18,13 +46,13 @@ class Experiment:
     self._bundles = {}
     self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
     self._name = exp_deco.name
+    self._nsroot = self # for namespace resolution
     if not os.path.isdir(config.data_dir):
-      logging.debug('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"')
+      logging.warning('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"')
       os.mkdir(config.data_dir)
     if not os.path.isdir(self._path):
       os.mkdir(self._path)
     logging.debug('Experiment directory is: '+str(self._path))
-
     pass
 
   def _add(self, func, data_tok, args, kwargs):
@@ -32,7 +60,6 @@ class Experiment:
     self._schedule.append( (func,data_tok,args,kwargs) )
     self._bundles[data_tok] = None
     pass
-
 
   def _run(self):
     #logging.debug('Running experiment')
