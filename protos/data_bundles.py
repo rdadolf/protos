@@ -32,14 +32,13 @@ class Token_Generator:
 
 # This is the actual reference to the data that a protocol generates.
 class Data_Bundle:
-  def __init__(self, xdata, prefix='unnamed'):
+  def __init__(self, xdata, name='unnamed'):
     # Make sure we were passed an experiment data dictionary
     assert 'path' in xdata, 'Bundles must be passed experiment data when created'
     assert 'bundle_tag' in xdata, 'Bundles must be passed experiment data when created'
 
-    self._prefix = prefix
     self._tag = xdata['bundle_tag']
-    self._name = 'stage{number:03d}_{prefix}'.format( number=self._tag, prefix=self._prefix )
+    self._name = 'stage{number:03d}_{name}'.format( number=self._tag, name=name )
 
     # User-facing attributes
     self.xdata = xdata # dict

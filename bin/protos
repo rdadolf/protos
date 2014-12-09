@@ -69,7 +69,7 @@ def load_protocols(protocol_dir):
             protocol_files.append(L)
   # 2) recursive search for .py
   else:
-    protocol_files = [os.path.join(dpath,fname) for (dpath,_,fname) in os.walk(pdir,followlinks=True) if fname.endswith('.py')]
+    protocol_files = [os.path.relpath(os.path.join(dpath,fname),pdir) for (dpath,_,fnames) in os.walk(pdir,followlinks=True) for fname in fnames if fname.endswith('.py')]
   logging.debug('All protocol files are:\n  '+'\n  '.join(protocol_files))
 
   # All these protocols will eventually have their names converted to dotted
@@ -114,7 +114,10 @@ def load_protocols(protocol_dir):
           front = head.replace(os.sep, '.') # 1)
           middle = tail.split('.')[0] # 2)
           back = func_name
-          name = '.'.join([front,middle,back])
+          if len(front)>0:
+            name = '.'.join([front,middle,back])
+          else:
+            name = '.'.join([middle,back])
           # Later, we'll convert all the front and middle pieces into Namespace
           # objects and the back piece into a thunk. This just sets the stage.
 
