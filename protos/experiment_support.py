@@ -3,7 +3,7 @@ import os
 import os.path
 from functools import reduce
 
-from .data_bundles import Data_Bundle, Bundle_Token
+from .data_bundles import Experiment_Data, Data_Bundle, Bundle_Token
 from .config import config
 from .fs_layout import scratch_directory
 
@@ -78,16 +78,17 @@ class Experiment:
           kw[k] = self._bundles[v.id]
 
       # Now run the function and store the resulting bundle object
-      exp_data = { 'path': self._path, 'bundle_tag': tok.id }
+      #xdata = Experiment_Data(self._path, tok.id) # FIXME: remove
+      xdata = Experiment_Data(tok.id)
       with scratch_directory() as d:
         os.chdir(d)
         # FIXME: Capture timing information?
         print('  Running protocol '+str(f.__name__))
-        bundle = f(exp_data,*a,**kw)
+        bundle = f(xdata,*a,**kw)
         assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
 
       # Now persist the bundle, for the record and for incremental re-eval later
-      bundle._write_to_disk()
+      bundle._write()
 
       self._bundles[tok.id] = bundle
     print('Done.')

@@ -10,3 +10,6 @@ class config:
   # Behavior
   reset = True
   preserve = False
+
+  # Modules
+  storage = 'fake'
