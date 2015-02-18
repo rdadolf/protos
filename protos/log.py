@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-
 import logging
 
 class log:
-  subordinate_logger = logging.Logger('protocol')
+  subordinate_logger = logging.getLogger('protocol')
 
   @classmethod
   def debug(self,*strings):
