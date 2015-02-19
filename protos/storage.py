@@ -25,7 +25,7 @@ class Fake(Datastore):
     logging.debug('RETRIEVING:',bundle.id)
     pass
 
-class GCloud(Datastore):
+class MongoDB(Datastore):
   def __init__(self):
     pass
   def write(self, bundle):
@@ -84,3 +84,10 @@ class Simple_Disk(Datastore):
     pass
   def read(self, bundle):
     pass
+
+mechanisms = {
+  'none' : Fake,
+  'mongo' : MongoDB,
+  'disk' : Simple_Disk
+}
+

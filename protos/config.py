@@ -12,4 +12,4 @@ class config:
   preserve = False
 
   # Modules
-  storage = 'fake'
+  storage = 'none'

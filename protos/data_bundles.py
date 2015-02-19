@@ -9,12 +9,7 @@ from functools import reduce
 
 from .config import config
 
-from .storage import Fake, GCloud, Simple_Disk
-storage_methods = {
-  'fake' : Fake,
-  'gcloud' : GCloud,
-  'disk' : Simple_Disk,
-}
+from .storage import mechanisms as storage_mechanisms
 
 # FIXME? This interface between Experiments and Bundles seems clunky.
 class Experiment_Data:
@@ -73,6 +68,10 @@ class Data_Bundle:
       # Create a globally unique identifier on creation.
       self.metadata['id'] = uuid.uuid1(clock_seq=self._tag).hex
 
+    # Load a storage mechanism
+    assert config.storage in storage_mechanisms, 'Could not find a data storage adapter named "'+config.storage+'"'
+    self._storage = storage_mechanisms[config.storage]()
+
   @property
   def id(self):
     return self.metadata['id']
@@ -82,18 +81,12 @@ class Data_Bundle:
 
   def _write(self):
     ''' Persistently stores a copy of the bundle for archiving and/or reuse. '''
-    assert config.storage in storage_methods, 'Could not find data storage adapter "'+config.storage+'"'
-    Mechanism = storage_methods[config.storage]
-    m = Mechanism()
-    m.write(self)
+    self._storage.write(self)
     return True
 
   def _read(self):
     ''' Populates the bundle with a pre-computed (cached) version.'''
-    assert config.storage in storage_methods, 'Could not find data storage adapter "'+config.storage+'"'
-    Mechanism = storage_methods[config.storage]
-    m = Mechanism()
-    m.read(self)
+    self._storage.read(self)
     return self
 
   ### User-facing ###
