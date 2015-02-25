@@ -9,20 +9,13 @@ from functools import reduce
 
 from .config import config
 
-from .storage import mechanisms as storage_mechanisms
-
 # FIXME? This interface between Experiments and Bundles seems clunky.
+# This class could be replaced with a tuple, but having a class identity is
+# useful for error checking.
 class Experiment_Data:
-  #def __init__(self, path, bundle_tag): # FIXME: remove
-  def __init__(self, bundle_tag):
-    #self.path = path # FIXME: remove
+  def __init__(self, bundle_tag, storage):
     self.bundle_tag = bundle_tag
-  def serialize(self):
-    # dictionary with __init__ kwargs as keys
-    # This should work:
-    #   xdata == Experiment_Data(**(xdata.serialize()))
-    return { 'bundle_tag': self.bundle_tag }
-    #return { 'path': self.path, 'bundle_tag': self.bundle_tag } # FIXME: remove
+    self.storage = storage
 
 # These tokens are used at experiment parse time to thread data dependencies
 # without having to invoke protocol functions (which are monadic and never
@@ -36,41 +29,37 @@ class Bundle_Token:
   def __repr__(self):
     return 'Bundle_Token('+str(self.id)+')'
 
+
 class Token_Generator:
   bundle_id = 0 # must be integer
-
   @classmethod
   def new(self):
     rv = self.bundle_id
     self.bundle_id += 1
     return Bundle_Token(rv)
 
+
 # This is the actual reference to the data that a protocol generates.
 class Data_Bundle:
-  def __init__(self, xdata, name='unnamed', _no_init=False):
+  def __init__(self, xdata, name='unnamed', _init=None):
     # It's an easy mistake to forget the xdata argument, since the users just
     # pass it in blindly, without really knowing why or what it is. If they
     # forget but still add a name, it could get picked up as the first argument.
     assert isinstance(xdata, Experiment_Data), 'Bundles must be passed experiment data when created'
 
-    self._tag = xdata.bundle_tag
     self._name = name
+    self._tag = xdata.bundle_tag
+    self._storage = xdata.storage
 
-    # When reading in a cached bundle, protos still creates a bundle object and
-    # calls the _read() method. In this case, all the initialization will just
-    # be overwritten anyways, so it is skipped.
-    if not _no_init:
+    # When protos creates a bundle from precomputed data, it uses all of the
+    # fields from the old bundle, so there's no reason to initialize anything.
+    if _init is None:
       # User-facing attributes
       self.metadata = dict()
       self.data = dict()
       self.files = []
-
       # Create a globally unique identifier on creation.
       self.metadata['id'] = uuid.uuid1(clock_seq=self._tag).hex
-
-    # Load a storage mechanism
-    assert config.storage in storage_mechanisms, 'Could not find a data storage adapter named "'+config.storage+'"'
-    self._storage = storage_mechanisms[config.storage]()
 
   @property
   def id(self):
@@ -79,15 +68,22 @@ class Data_Bundle:
   def __repr__(self):
     return '<'+self._name+' data bundle>'
 
-  def _write(self):
-    ''' Persistently stores a copy of the bundle for archiving and/or reuse. '''
-    self._storage.write(self)
-    return True
+  def _externalize(self):
+    # NOTE: we *assume* that the metadata and data dictionaries are safe to
+    #   represent in JSON. This is not guaranteed, since users can augment
+    #   data bundles with whatever they want. I don't know a good way to check
+    #   this, but there's a concern that it could corrupt data output if it
+    #   isn't done.
+    s = dict()
+    s['data'] = self.data
+    s['metadata'] = self.metadata
+    s['files'] = self.files
+    return s
 
-  def _read(self):
-    ''' Populates the bundle with a pre-computed (cached) version.'''
-    self._storage.read(self)
-    return self
+  def _persist(self):
+    ''' Persistently stores a copy of the bundle for archiving and/or reuse. '''
+    self._storage.write( self._externalize() )
+    return True
 
   ### User-facing ###
 

@@ -218,12 +218,18 @@ def main():
   parser.add_argument('--preserve',action='store_true',help='Prevents temporary directories from being cleaned up. Caution! This creates a lot of garbage in /tmp.')
   #parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
   parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
+  parser.add_argument('-c','--config',help='Specify a protos configuration file')
   args = parser.parse_args()
 
   if args.verbose:
     logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually
   if args.preserve:
     config.preserve = True
+
+  # Find a configuration file
+  f = config.find(hint=args.config) # if args.config isn't specified, it's None
+  if f is not None:
+    config.load(f)
 
   # Find the experiment file we're going to work on.
   #args=sys.argv[1:]

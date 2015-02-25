@@ -7,6 +7,8 @@ from .data_bundles import Experiment_Data, Data_Bundle, Bundle_Token
 from .config import config
 from .fs_layout import scratch_directory
 
+from .storage import mechanisms as storage_mechanisms
+
 # Namespace is a placeholder class for allowing hierarchy in protocol names.
 # This is a little tricky. We add protocol names to the Experiment instance
 # at runtime, but since protocols are fake-invoked using the same dot syntax
@@ -47,13 +49,10 @@ class Experiment:
     self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
     self._name = exp_deco.name
     self._nsroot = self # for namespace resolution
-    if not os.path.isdir(config.data_dir):
-      logging.warning('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"')
-      os.mkdir(config.data_dir)
-    if not os.path.isdir(self._path):
-      os.mkdir(self._path)
-    logging.debug('Experiment directory is: '+str(self._path))
-    pass
+
+    # Initialize our storage interface
+    assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
+    self._storage = storage_mechanisms[config.storage](self._name)
 
   def _add(self, func, data_tok, args, kwargs):
     logging.debug('Adding function '+str(func.__name__))
@@ -78,8 +77,7 @@ class Experiment:
           kw[k] = self._bundles[v.id]
 
       # Now run the function and store the resulting bundle object
-      #xdata = Experiment_Data(self._path, tok.id) # FIXME: remove
-      xdata = Experiment_Data(tok.id)
+      xdata = Experiment_Data(tok.id, self._storage)
       with scratch_directory() as d:
         os.chdir(d)
         # FIXME: Capture timing information?
@@ -88,9 +86,10 @@ class Experiment:
         assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
 
       # Now persist the bundle, for the record and for incremental re-eval later
-      bundle._write()
+      bundle._persist()
 
       self._bundles[tok.id] = bundle
+
     print('Done.')
     return True
 
