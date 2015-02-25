@@ -30,6 +30,9 @@ class MongoDB(Datastore):
 
 class Simple_Disk(Datastore):
   def __init__(self, experiment_name):
+    self._project_path = None
+    self._exp_path = None
+
     # Check/create the data directory
     if not os.path.isdir(config.data_dir):
       logging.warning('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"') # This is unusual. Normally the data directory is already there. This might be a red flag for problems, but we can still carry on.
@@ -43,20 +46,16 @@ class Simple_Disk(Datastore):
     if not os.path.isdir(self._exp_path):
       os.mkdir(self._exp_path)
 
-    # FIXME: I just copy-pasted this so I don't lose the code. It does not work.
-    '''
-    #def _create_directory(self):
-    if not os.path.isdir(self.directory):
-      os.mkdir(self.directory)
-    if os.path.isdir(self.directory) and config.reset:
-      # FIXME: reset is too harsh, give finer granularity
-      # Defensive programming
-      assert len(self.directory)>1, 'empty bundle directory: '+str(self.directory)      shutil.rmtree(self.directory)
-      os.mkdir(self.directory)
-    '''
-
-    pass
   def write(self, bundle):
+    assert 'metadata' in bundle, 'Data bundle corrupted? No metadata found.'
+    assert 'id' in bundle['metadata'], 'Data bundle corrupted? No ID in metadata.'
+    bundle_id = bundle['metadata']['id']
+
+    f = open(os.path.join(self._exp_path, bundle_id), 'w')
+    logging.debug('Writing data bundle to disk:\n'+json.dumps(bundle,f,indent=2))
+    json.dump(bundle,f,indent=2)
+
+
     # FIXME: I just copy-pasted this so I don't lose the code. It does not work.
     '''
     # path is: os.path.join(self._experiment_path, self._name+'.bundle')
