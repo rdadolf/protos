@@ -5,9 +5,12 @@ import os
 import os.path
 import shutil
 import uuid
+import datetime
 from functools import reduce
 
 from .config import config
+
+DATE_FORMAT='%Y-%m-%d_%H-%M-%S-%f_%Z'
 
 # FIXME? This interface between Experiments and Bundles seems clunky.
 # This class could be replaced with a tuple, but having a class identity is
@@ -60,6 +63,8 @@ class Data_Bundle:
       self.files = []
       # Create a globally unique identifier on creation.
       self.metadata['id'] = uuid.uuid1(clock_seq=self._tag).hex
+      self.metadata['name'] = self._name
+      self.metadata['time'] = datetime.datetime.utcnow().strftime(DATE_FORMAT)
 
   @property
   def id(self):
