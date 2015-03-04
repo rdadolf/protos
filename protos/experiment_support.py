@@ -56,7 +56,8 @@ class Experiment:
 
   def _add(self, func, data_tok, args, kwargs):
     logging.debug('Adding function '+str(func.__name__))
-    self._schedule.append( (func,data_tok,args,kwargs) )
+    # list(args) is needed later when we substitute bundles for bundle tokens
+    self._schedule.append( (func,data_tok,list(args),kwargs) )
     self._bundles[data_tok] = None
     pass
 
@@ -71,10 +72,17 @@ class Experiment:
 
     for (f,tok,a,kw) in self._schedule:
       # Replace data bundle tokens with actual data bundles
+      # First for keyword arguments
       for (k,v) in kw.items():
         if isinstance(v,Bundle_Token):
           # FIXME: inverted data dependencies can cause this lookup to fail
           kw[k] = self._bundles[v.id]
+      # And for positional arguments
+      for i in xrange(0,len(a)):
+        arg = a[i]
+        if isinstance(arg,Bundle_Token):
+          # FIXME: above may still apply (I don't remember!)
+          a[i] = self._bundles[arg.id]
 
       # Now run the function and store the resulting bundle object
       xdata = Experiment_Data(tok.id, self._storage)
