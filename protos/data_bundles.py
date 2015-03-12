@@ -5,16 +5,16 @@ import os
 import os.path
 import shutil
 import uuid
-import datetime
+from datetime import datetime
 from functools import reduce
 
 from .config import config
 
-DATE_FORMAT='%Y-%m-%d_%H-%M-%S-%f_%Z'
-
-# FIXME? This interface between Experiments and Bundles seems clunky.
+# Experiment data is strictly a data packaging mechanism for transferring
+# information about the experiment in progress to the data bundles it uses.
 # This class could be replaced with a tuple, but having a class identity is
 # useful for error checking.
+# FIXME? This interface between Experiments and Bundles seems clunky.
 class Experiment_Data:
   def __init__(self, bundle_tag, storage):
     self.bundle_tag = bundle_tag
@@ -63,8 +63,9 @@ class Data_Bundle:
       self.files = []
       # Create a globally unique identifier on creation.
       self.metadata['id'] = uuid.uuid1(clock_seq=self._tag).hex
-      self.metadata['name'] = self._name
-      self.metadata['time'] = datetime.datetime.utcnow().strftime(DATE_FORMAT)
+      self.metadata['bundle_type'] = self._name
+      self.metadata['time'] = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S-%f_UTC')
+      # FIXME: needs more metadata
 
   @property
   def id(self):
@@ -95,6 +96,13 @@ class Data_Bundle:
   def add_file(self, f):
     abs_f = os.path.abspath(f)
     assert os.path.isfile(abs_f), 'No file "'+str(abs_f)+'" to add to '+str(self)
-    shutil.copy(abs_f,self.directory)
-    new_name = os.path.join( self.directory, os.path.basename(abs_f) )
-    self.files.append(new_name)
+
+    # FIXME: This broke when we abstracted storage from data bundles.
+    logging.error('Adding files to data bundles is currently broken. "'+f+'" was not added.')
+    #shutil.copy(abs_f,self.directory)
+    #new_name = os.path.join( self.directory, os.path.basename(abs_f) )
+    #self.files.append(new_name)
+
+class Void_Bundle(Data_Bundle):
+  def __init__(self, experiment):
+    Data_Bundle.__init__(self, experiment, name='void')
