@@ -48,11 +48,14 @@ class Experiment:
     self._bundles = {}
     self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
     self._name = exp_deco.name
+    self._metadata = {}
     self._nsroot = self # for namespace resolution
 
     # Initialize our storage interface
     assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
-    self._storage = storage_mechanisms[config.storage](self._name)
+    self._storage = storage_mechanisms[config.storage]()
+    self._storage_xid = self._storage.create_experiment_id(self._name)
+    self._storage.update_experiment_metadata(self._metadata, self._storage_xid)
 
   def _add(self, func, data_tok, args, kwargs):
     logging.debug('Adding function '+str(func.__name__))
@@ -85,7 +88,7 @@ class Experiment:
           a[i] = self._bundles[arg.id]
 
       # Now run the function and store the resulting bundle object
-      xdata = Experiment_Data(tok.id, self._storage)
+      xdata = Experiment_Data(tok.id, self._storage, self._storage_xid)
       with scratch_directory() as d:
         os.chdir(d)
         # FIXME: Capture timing information?

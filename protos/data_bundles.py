@@ -16,9 +16,10 @@ from .config import config
 # useful for error checking.
 # FIXME? This interface between Experiments and Bundles seems clunky.
 class Experiment_Data:
-  def __init__(self, bundle_tag, storage):
+  def __init__(self, bundle_tag, storage, storage_xid):
     self.bundle_tag = bundle_tag
     self.storage = storage
+    self.storage_xid = storage_xid
 
 # These tokens are used at experiment parse time to thread data dependencies
 # without having to invoke protocol functions (which are monadic and never
@@ -53,6 +54,7 @@ class Data_Bundle:
     self._name = name
     self._tag = xdata.bundle_tag
     self._storage = xdata.storage
+    self._storage_xid = xdata.storage_xid
 
     # When protos creates a bundle from precomputed data, it uses all of the
     # fields from the old bundle, so there's no reason to initialize anything.
@@ -88,7 +90,7 @@ class Data_Bundle:
 
   def _persist(self):
     ''' Persistently stores a copy of the bundle for archiving and/or reuse. '''
-    self._storage.write( self._externalize() )
+    self._storage.write_bundle( self._externalize(), self._storage_xid )
     return True
 
   ### User-facing ###

@@ -14,8 +14,9 @@ class config:
   reset = True
   preserve = False
 
-  # Modules
-  storage = 'none'
+  # Storage
+  storage = 'none' # mechanism name
+  storage_server = '127.0.0.1' # if necessary
 
   # Parameters
   project_name = 'default'
