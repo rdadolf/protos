@@ -36,7 +36,7 @@ def load_exf(exf,config):
 # Create a dictionary of functions 
 def load_protocols(protocol_dir):
   # First, find the protocols directory
-  pdir=os.path.realpath=protocol_dir
+  pdir = os.path.realpath(protocol_dir)
   if not os.path.isdir(pdir):
     logging.error('Invalid protocol directory: '+pdir)
 
