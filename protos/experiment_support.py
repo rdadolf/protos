@@ -55,7 +55,7 @@ class Experiment:
     assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
     self._storage = storage_mechanisms[config.storage]()
     self._storage_xid = self._storage.create_experiment_id(self._name)
-    self._storage.update_experiment_metadata(self._metadata, self._storage_xid)
+    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
   def _add(self, func, data_tok, args, kwargs):
     logging.debug('Adding function '+str(func.__name__))
@@ -69,22 +69,19 @@ class Experiment:
     print('--- Running Experiment "'+str(self._name)+'" ---')
 
     # FIXME: incremental progress is not handled
-    #        we'll need to use _read_from_disk() to grab previous results
-    #        we'll use those bundles to pre-populate the self._bundles
-    #        then we'll need to skip forward to the starting spot and run
 
     for (f,tok,a,kw) in self._schedule:
       # Replace data bundle tokens with actual data bundles
       # First for keyword arguments
       for (k,v) in kw.items():
         if isinstance(v,Bundle_Token):
-          # FIXME: inverted data dependencies can cause this lookup to fail
+          # FIXME: buggy inverted data dependencies can cause this lookup to fail
           kw[k] = self._bundles[v.id]
       # And for positional arguments
       for i in xrange(0,len(a)):
         arg = a[i]
         if isinstance(arg,Bundle_Token):
-          # FIXME: above may still apply (I don't remember!)
+          # FIXME: buggy inverted data dependencies can cause this lookup to fail
           a[i] = self._bundles[arg.id]
 
       # Now run the function and store the resulting bundle object
