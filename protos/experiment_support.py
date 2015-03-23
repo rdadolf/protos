@@ -6,6 +6,7 @@ from functools import reduce
 from .data_bundles import Experiment_Data, Data_Bundle, Bundle_Token
 from .config import config
 from .fs_layout import scratch_directory
+from .internal import timestamp
 
 from .storage import mechanisms as storage_mechanisms
 
@@ -48,7 +49,9 @@ class Experiment:
     self._bundles = {}
     self._path = reduce(os.path.join, [config.data_dir, exp_deco.name])
     self._name = exp_deco.name
-    self._metadata = {}
+    self._metadata = {
+      'name': self._name,
+    }
     self._nsroot = self # for namespace resolution
 
     # Initialize our storage interface
@@ -67,6 +70,8 @@ class Experiment:
   def _run(self):
     #logging.debug('Running experiment')
     print('--- Running Experiment "'+str(self._name)+'" ---')
+    self._metadata['time'] = timestamp()
+    self._storage.update_experiment_metadata(self._metadata, self._storage_xid)
 
     # FIXME: incremental progress is not handled
     #        we'll need to use _read_from_disk() to grab previous results

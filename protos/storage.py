@@ -5,8 +5,9 @@ from functools import reduce
 import pwd
 import logging
 import json
-import datetime
 import pymongo
+
+from .internal import timestamp
 
 class Datastore: # Abstract interface class
   def __init__(self):
@@ -114,7 +115,7 @@ class Simple_Disk(Datastore):
 
   def create_experiment_id(self, experiment_name):
     # Check/create an experiment directory
-    exp_path = os.path.join(self._project_path, experiment_name+'_'+datetime.datetime.now().isoformat('_'))
+    exp_path = os.path.join(self._project_path, experiment_name+'_'+timestamp())
     if not os.path.isdir(exp_path):
       os.mkdir(exp_path)
     # XID is the path to the experiment directory

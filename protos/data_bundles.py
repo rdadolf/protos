@@ -5,10 +5,10 @@ import os
 import os.path
 import shutil
 import uuid
-from datetime import datetime
 from functools import reduce
 
 from .config import config
+from .internal import timestamp
 
 # Experiment data is strictly a data packaging mechanism for transferring
 # information about the experiment in progress to the data bundles it uses.
@@ -66,7 +66,7 @@ class Data_Bundle:
       # Create a globally unique identifier on creation.
       self.metadata['id'] = uuid.uuid1(clock_seq=self._tag).hex
       self.metadata['bundle_type'] = self._name
-      self.metadata['time'] = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S-%f_UTC')
+      self.metadata['time'] = timestamp()
       # FIXME: needs more metadata
 
   @property
