@@ -68,6 +68,8 @@ class Data_Bundle:
       self.metadata['bundle_type'] = self._name
       self.metadata['time'] = timestamp()
       # FIXME: needs more metadata
+    else: # _init is a previously-externalized JSON object
+      self._internalize(_init)
 
   @property
   def id(self):
@@ -75,6 +77,13 @@ class Data_Bundle:
 
   def __repr__(self):
     return '<'+self._name+' data bundle>'
+
+  def _internalize(self, json_dict):
+    self.data = json_dict['data']
+    self.metadata = json_dict['metadata']
+    self.files = json_dict['files']
+    # We record our name in two places. This is the second one.
+    self._name = self.metadata['bundle_type']
 
   def _externalize(self):
     # NOTE: we *assume* that the metadata and data dictionaries are safe to

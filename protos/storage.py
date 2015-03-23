@@ -9,35 +9,81 @@ import pymongo
 
 from .internal import timestamp
 
+def _match_bundle(pat,bundle,indent=0):
+  if (type(bundle) is list) and (type(pat) is list):
+    #print ' '*indent,'LIST:'#,pat,bundle
+    for subpat in pat:
+      if not any([_match_bundle(subpat,subbundle,indent+2) for subbundle in bundle]):
+        #print ' '*indent,'FAILED LIST'
+        return None
+
+  elif (type(bundle) is dict) and (type(pat) is dict):
+    #print ' '*indent,'DICT:',pat.keys(),bundle.keys()
+    if not all([pat_k in bundle.keys() for (pat_k,pat_v) in pat.items()]):
+      #print ' '*indent,'FAILED DICT (KEY)'
+      return None
+    arry=[_match_bundle(pat_v,bundle[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]
+    #if not all([_match_bundle(pat_v,bundle[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]):
+    if not all(arry):
+      #print ' '*indent,'FAILED DICT (VALUE)'
+      return None
+
+  else: # scalar
+    #print ' '*indent,'SCALAR:',pat,bundle
+    if pat!=bundle:
+      #print ' '*indent,'FAILED SCALAR'
+      return None
+
+  #print ' '*indent,'PASSED'
+  return bundle
+
 class Datastore: # Abstract interface class
   def __init__(self):
     ''' Any storage initialization that needs to take place should happen here. Note that this function is called *at least* every time a bundle is initialized, so make sure that it *checks* expensive operations before blindly executing them.'''
-    raise NotImplementedError
+    raise NotImplementedError('Missing implementation in storage adapter')
+
   def create_experiment_id(self, experiment_name):
     ''' This function should take experiment info and create a space for it on the datastore. It should return a unique identifier which can be reused for write_bundle. Calling it twice will create two different experiment ids.'''
-    raise NotImplementedError
+    raise NotImplementedError('Missing implementation in storage adapter')
 
-  def update_experiment_metadata(self, metadata, xid):
+  def find_experiments(self, pattern):
+    '''Returns a list of xid's for experiments that match the pattern given.'''
+    raise NotImplementedError('Missing implementation in storage adapter')
+
+  def read_experiment_metadata(self, xid):
+    '''Returns a JSON dictionary of metadata.'''
+    raise NotImplementedError('Missing implementation in storage adapter')
+
+  def write_experiment_metadata(self, metadata, xid):
     ''' This should take a JSON dictionary of metadata and write it to the datastore, associated with the experiment as a whole. Bundles have their own metadata which is handled separately.'''
-    raise NonImplementedError
+    raise NotImplementedError('Missing implementation in storage adapter')
+
+  def find_bundles(self, pattern, xid):
+    ''' Returns a list of data bundle objects.'''
+    raise NotImplementedError('Missing implementation in storage adapter')
 
   def write_bundle(self, bundle, xid):
     ''' This function should take a serialized bundle and write it to whatever backing store it uses.'''
-    raise NotImplementedError
+    raise NotImplementedError('Missing implementation in storage adapter')
 
 class Fake(Datastore):
   def __init__(self):
     pass
   def create_experiment_id(self, experiment_name):
     logging.debug('EXP: '+experiment_name)
-    pass
-  def update_experiment_metadata(self, metadata, xid):
-    logging.debug('EXP-METADATA: '+json.dumps(metadata))
+  def find_experiments(self,pattern):
+    logging.debug('FIND EXPS: '+str(pattern))
+  def read_experiment_metadata(self, xid):
+    logging.debug('READ EXP-METADATA: '+str(xid))
+  def write_experiment_metadata(self, metadata, xid):
+    logging.debug('WRITE EXP-METADATA: '+json.dumps(metadata))
+  def find_bundles(self, pattern, xid):
+    logging.debug('FIND BUNDLES: '+str(pattern))
   def write_bundle(self, bundle, xid):
+    logging.debug('BUNDLE:')
     logging.debug('DATA: '+json.dumps(bundle['data']))
     logging.debug('METADATA: '+json.dumps(bundle['metadata']))
     logging.debug('FILES: '+json.dumps(bundle['files']))
-    pass
 
 class MongoDB(Datastore):
   def __init__(self):
@@ -89,17 +135,46 @@ class MongoDB(Datastore):
     id = self._proj.insert(experiment)
     return id
 
-  def update_experiment_metadata(self, metadata, xid):
+  def find_experiments(self, pattern):
+    query = pattern
+    projection = {}
+    results = self._proj.find(pattern,projection) # returns Cursor object
+    return [result['_id'] for result in results] # implicit conversion to list
+
+  def read_experiment_metadata(self, xid):
+    query = {'_id': xid}
+    projection = {'_id': 0, 'metadata': 1}
+    md = self._proj.find(query, projection)
+    if md.count()==0:
+      logging.warning('Couldnt read metadata from experiment'+str(xid)+'"')
+      return {}
+    return md[0]['metadata']
+
+  def write_experiment_metadata(self, metadata, xid):
     # Since there's only one metadata doc (or should be), we can update directly.
     new_md = self._proj.update( {'_id':xid}, {'$set': {'metadata': metadata}} )
     logging.debug('Wrote new experiment metadata:\n'+str(new_md))
     return True
+
+  def find_bundles(self, pattern, xid):
+    # I can't find a good native way to do this in MongoDB, given that bundles
+    # are implemented as subdocuments.
+
+    # Grab all of the bundles from the specified experiment
+    agg_results = self._proj.aggregate([
+      {'$match': { '_id': xid }},
+      {'$unwind': '$bundles'},
+      {'$project': {'bundles': 1}}])['result']
+    bundles = [r['bundles'] for r in agg_results]
+    # Filter and return
+    return [b for b in bundles if _match_bundle(pattern,b)]
  
   def write_bundle(self, bundle, xid):
     self._reconnect()
     bundle_id = self._proj.update( {'_id':xid}, {'$push': {'bundles': bundle}} )
     return True
 
+# FIXME: implement find_experiments, read_experiment_metadata, and find_bundles
 class Simple_Disk(Datastore):
   def __init__(self):
     self._project_path = None
@@ -121,7 +196,7 @@ class Simple_Disk(Datastore):
     # XID is the path to the experiment directory
     return exp_path
 
-  def update_experiment_metadata(self, metadata, xid):
+  def write_experiment_metadata(self, metadata, xid):
     # XID is the path to the experiment directory
     # FYI: Blows away previous metadata, even if it had more information.
     f = open(os.path.join(xid, 'metadata'), 'w')
