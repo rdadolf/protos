@@ -71,7 +71,7 @@ class Experiment:
     #logging.debug('Running experiment')
     print('--- Running Experiment "'+str(self._name)+'" ---')
     self._metadata['time'] = timestamp()
-    self._storage.update_experiment_metadata(self._metadata, self._storage_xid)
+    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
     # FIXME: incremental progress is not handled
 
