@@ -216,20 +216,29 @@ def main():
   parser.add_argument('experiment')
   #parser.add_argument('-r','--restart',action='store_true',help='Remove all prior data and re-run the experiment ')
   parser.add_argument('--preserve',action='store_true',help='Prevents temporary directories from being cleaned up. Caution! This creates a lot of garbage in /tmp.')
+  parser.add_argument('-d','--debug',action='store_true',help='Enable debug mode. Experiments are not stored persistently. Implies --verbose.')
   #parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
   parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
   parser.add_argument('-c','--config',help='Specify a protos configuration file')
   args = parser.parse_args()
 
-  if args.verbose:
-    logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually
-  if args.preserve:
-    config.preserve = True
-
   # Find a configuration file
+  # Note: we load the config file *first* so that command-line arguments can
+  #   override the config file values.
   f = config.find(hint=args.config) # if args.config isn't specified, it's None
   if f is not None:
     config.load(f)
+
+  if args.debug:
+    args.verbose = True
+    config.storage = 'none'
+
+  if args.verbose:
+    logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually
+
+  if args.preserve:
+    config.preserve = True
+
 
   # Find the experiment file we're going to work on.
   #args=sys.argv[1:]
