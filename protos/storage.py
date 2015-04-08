@@ -133,12 +133,31 @@ class MongoDB(Datastore):
     # disambiguate between them is through querying differing attributes. The
     # '_id' returned from that query can be used to reference it uniquely.
     id = self._proj.insert(experiment)
+    # FIXME: update metadata with this id for searching
+    #mod_result = self._proj.update({'_id':id}, {'$set':{'metadata.id':id}})
+    # FIXME: error checking?
     return id
 
+  def _pattern_to_query(self, pattern, prefix=None):
+    if prefix is not None:
+      prefix += '.'
+    else:
+      prefix = ''
+    d = {}
+    for (p,v) in pattern.items():
+      if type(v) is dict:
+        d.update( self._pattern_to_query(v,prefix=prefix+p) )
+      elif type(v) is list:
+        # FIXME: How do I handle lists?
+        assert False, 'Not Implemented Yet'
+      else:
+        d[prefix+p] = v 
+    return d
+
   def find_experiments(self, pattern):
-    query = pattern
+    query = self._pattern_to_query(pattern)
     projection = {}
-    results = self._proj.find(pattern,projection) # returns Cursor object
+    results = self._proj.find(query,projection) # returns Cursor object
     return [result['_id'] for result in results] # implicit conversion to list
 
   def read_experiment_metadata(self, xid):
