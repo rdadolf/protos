@@ -37,7 +37,7 @@ class Query_Result:
 def search_experiments(pattern):
   assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
   datastore = storage_mechanisms[config.storage]()
-  xids = datastore.find_experiments(pattern)
+  xids = list(datastore.find_experiments(pattern))
   return [Query_Result(datastore,xid) for xid in xids]
 
 def exact_experiment(xid):
