@@ -202,6 +202,8 @@ def local_run(exp_list, protocol_dict, config):
   exp = exp_fn(exp_monad)
   # Now run it locally
   exp._run()
+  # To help the user, dump the experiment ID afterwards.
+  print 'Experiment '+exp._metadata['id']+ 'complete.'
   pass
 
 def condor_run(experiment, protocol_dict, config):

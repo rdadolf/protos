@@ -104,7 +104,6 @@ class Experiment:
 
       self._bundles[tok.id] = bundle
 
-    print('Done.')
     return True
 
 
