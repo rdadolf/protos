@@ -6,6 +6,7 @@ import pwd
 import logging
 import json
 import pymongo
+import bson
 
 from .internal import timestamp
 
@@ -133,16 +134,37 @@ class MongoDB(Datastore):
     # disambiguate between them is through querying differing attributes. The
     # '_id' returned from that query can be used to reference it uniquely.
     id = self._proj.insert(experiment)
+    # Note: Don't do anything to the metadata behind the scenes here, since it
+    # will be overwritten by any call to write_experiment_metadata().
+    # Experiment objects are the primary owners and controllers of metadata,
+    # not storage adapters. (This is to simplify consistent behavior across
+    # adapters.)
     return id
 
+  def _pattern_to_query(self, pattern, prefix=None):
+    if prefix is not None:
+      prefix += '.'
+    else:
+      prefix = ''
+    d = {}
+    for (p,v) in pattern.items():
+      if type(v) is dict:
+        d.update( self._pattern_to_query(v,prefix=prefix+p) )
+      elif type(v) is list:
+        # FIXME: How do I handle lists?
+        assert False, 'Not Implemented Yet'
+      else:
+        d[prefix+p] = v 
+    return d
+
   def find_experiments(self, pattern):
-    query = pattern
+    query = self._pattern_to_query(pattern)
     projection = {}
-    results = self._proj.find(pattern,projection) # returns Cursor object
-    return [result['_id'] for result in results] # implicit conversion to list
+    results = self._proj.find(query,projection) # returns Cursor object
+    return [str(result['_id']) for result in results]
 
   def read_experiment_metadata(self, xid):
-    query = {'_id': xid}
+    query = {'_id': bson.objectid.ObjectId(xid)}
     projection = {'_id': 0, 'metadata': 1}
     md = self._proj.find(query, projection)
     if md.count()==0:
@@ -152,7 +174,7 @@ class MongoDB(Datastore):
 
   def write_experiment_metadata(self, metadata, xid):
     # Since there's only one metadata doc (or should be), we can update directly.
-    new_md = self._proj.update( {'_id':xid}, {'$set': {'metadata': metadata}} )
+    new_md = self._proj.update( {'_id':bson.objectid.ObjectId(xid)}, {'$set': {'metadata': metadata}} )
     logging.debug('Wrote new experiment metadata:\n'+str(new_md))
     return True
 
@@ -162,7 +184,7 @@ class MongoDB(Datastore):
 
     # Grab all of the bundles from the specified experiment
     agg_results = self._proj.aggregate([
-      {'$match': { '_id': xid }},
+      {'$match': { '_id': bson.objectid.ObjectId(xid) }},
       {'$unwind': '$bundles'},
       {'$project': {'bundles': 1}}])['result']
     bundles = [r['bundles'] for r in agg_results]
@@ -171,7 +193,7 @@ class MongoDB(Datastore):
  
   def write_bundle(self, bundle, xid):
     self._reconnect()
-    bundle_id = self._proj.update( {'_id':xid}, {'$push': {'bundles': bundle}} )
+    bundle_id = self._proj.update( {'_id':bson.objectid.ObjectId(xid)}, {'$push': {'bundles': bundle}} )
     return True
 
 # FIXME: implement find_experiments, read_experiment_metadata, and find_bundles

@@ -58,6 +58,7 @@ class Experiment:
     assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
     self._storage = storage_mechanisms[config.storage]()
     self._storage_xid = self._storage.create_experiment_id(self._name)
+    self._metadata['id'] = str(self._storage_xid)
     self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
   def _add(self, func, data_tok, args, kwargs):
