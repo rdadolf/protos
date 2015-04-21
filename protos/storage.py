@@ -104,11 +104,14 @@ class MongoDB(Datastore):
   def _reconnect(self):
     # Disconnect if necessary
     if self._conn:
-      if self._conn.alive():
+      try:
+        self._conn.server_info()
         return True
-      else:
+      except:
         self._conn.close()
+        self._conn = None # mongo will resurrect this connection if used again
         self._clean_connection_state()
+      # Exception caught and handled. Now we need a new connection.
     # Connect
     username = pwd.getpwuid(os.getuid())[0]
     # FIXME: Make PEMfile path configurable
@@ -116,8 +119,6 @@ class MongoDB(Datastore):
     logging.debug('Connecting to MongoDB server on '+config.storage_server)
     # FIXME: CERT_NONE means we don't authenticate the server from the client. However, it also means that we don't need to distribute server certificates to all the clients. It's not hard, but currently we have a hostname mismatch on the rootCA cert on our server, so it won't authenticate. Summary: clients are hoping they're not man-in-the-middle'd while contacting a server.
     self._conn = pymongo.MongoClient(config.storage_server, ssl=True, ssl_certfile=pemfile, ssl_cert_reqs=ssl.CERT_NONE)
-    if not self._conn.alive():
-      logging.error('Could not connect to databse')
     self._db = self._conn['protos']
     # Authenticate
     mongoname = 'CN='+username+',OU=ACC,O=Harvard,L=Cambridge,ST=Massachusetts,C=US'
