@@ -124,10 +124,15 @@ class MongoDB(Datastore):
     # Authenticate
     mongoname = 'CN='+username+',OU=ACC,O=Harvard,L=Cambridge,ST=Massachusetts,C=US'
     self._db.authenticate(name=mongoname, mechanism='MONGODB-X509')
-    # Set database write concern to 'authenticate'
+
+    # Set database write concern to 'acknowledge'
     #   We have no replicas, so don't wait for any
     #   Don't wait for journaling. We'll trust it in the name of performance.
-    self._db.write_concern = {'w':1}
+    #self._db.write_concern = {'w':1}
+    # FIXME: pymongo 3.0 broke this. Luckily, 'acknowledge' is already the
+    # default write concern for mongodb, so we'll just remove the explicit
+    # call. Beware if this changes in the future.
+
     # Find/create project collection
     if config.project_name not in self._db.collection_names():
       self._db.create_collection(name=config.project_name)
