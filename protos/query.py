@@ -24,7 +24,7 @@ class Query_Result:
   def exact_bundle(self,bid):
     bundles = self._datastore.find_bundles({'metadata':{'id':str(bid)}}, self._xid)
     if len(bundles)==0:
-      logging.debug('No bundle id matched "'+str(bid)+'"')
+      logging.warn('No bundle id matched "'+str(bid)+'"')
       return None
     if len(bundles)>1:
       logging.error('Non-unique bundle id detected: "'+str(bid)+'"')
@@ -45,7 +45,7 @@ def exact_experiment(xid):
   datastore = storage_mechanisms[config.storage]()
   xids = list(datastore.find_experiments({'metadata':{'id':str(xid)}}))
   if len(xids)==0:
-    logging.debug('No experiment id matched "'+str(xid)+'"')
+    logging.warn('No experiment id matched "'+str(xid)+'"')
     return None
   if len(xids)>1:
     logging.error('Non-unique experiment id detected: "'+str(xid)+'"')
