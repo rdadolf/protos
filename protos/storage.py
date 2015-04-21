@@ -114,6 +114,7 @@ class MongoDB(Datastore):
       # Exception caught and handled. Now we need a new connection.
     # Connect
     username = pwd.getpwuid(os.getuid())[0]
+    username = os.getenv('MONGO_USERNAME', username) # Allow the user to override the username used to connect to mongodb (and the ssl file)
     # FIXME: Make PEMfile path configurable
     pemfile = reduce(os.path.join, [os.getenv('HOME','/etc'), '.ssl', username+'.pem'])
     logging.debug('Connecting to MongoDB server on '+config.storage_server)
