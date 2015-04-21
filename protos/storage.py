@@ -6,6 +6,7 @@ import pwd
 import logging
 import json
 import pymongo
+import ssl
 import bson
 
 from .internal import timestamp
@@ -113,7 +114,8 @@ class MongoDB(Datastore):
     # FIXME: Make PEMfile path configurable
     pemfile = reduce(os.path.join, [os.getenv('HOME','/etc'), '.ssl', username+'.pem'])
     logging.debug('Connecting to MongoDB server on '+config.storage_server)
-    self._conn = pymongo.MongoClient(config.storage_server, ssl=True, ssl_certfile=pemfile)
+    # FIXME: CERT_NONE means we don't authenticate the server from the client. However, it also means that we don't need to distribute server certificates to all the clients. It's not hard, but currently we have a hostname mismatch on the rootCA cert on our server, so it won't authenticate. Summary: clients are hoping they're not man-in-the-middle'd while contacting a server.
+    self._conn = pymongo.MongoClient(config.storage_server, ssl=True, ssl_certfile=pemfile, ssl_cert_reqs=ssl.CERT_NONE)
     if not self._conn.alive():
       logging.error('Could not connect to databse')
     self._db = self._conn['protos']
