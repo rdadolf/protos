@@ -197,9 +197,12 @@ class MongoDB(Datastore):
 
     # Grab all of the bundles from the specified experiment
     agg_results = self._proj.aggregate([
-      {'$match': { '_id': bson.objectid.ObjectId(xid) }},
-      {'$unwind': '$bundles'},
-      {'$project': {'bundles': 1}}])['result']
+        {'$match': { '_id': bson.objectid.ObjectId(xid) }},
+        {'$unwind': '$bundles'},
+        {'$project': {'bundles': 1}}],
+      cursor={}) # returns a CommandCursor, which can be iterated over for results
+
+    # FIXME
     bundles = [r['bundles'] for r in agg_results]
     # Filter and return
     return [b for b in bundles if _match_bundle(pattern,b)]
