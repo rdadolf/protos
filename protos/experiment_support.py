@@ -2,6 +2,9 @@ import logging
 import os
 import os.path
 from functools import reduce
+import socket
+import pwd
+import platform
 
 from .data_bundles import Experiment_Data, Data_Bundle, Bundle_Token
 from .config import config
@@ -72,6 +75,13 @@ class Experiment:
     #logging.debug('Running experiment')
     print('--- Running Experiment "'+str(self._name)+'" ---')
     self._metadata['time'] = timestamp()
+    hostname = socket.getfqdn()
+    dot_loc = hostname.find('.')
+    if dot_loc>0:
+      hostname = hostname[0:dot_loc]
+    self._metadata['host'] = hostname
+    self._metadata['platform'] = platform.platform()
+    self._metadata['user'] = pwd.getpwuid(os.getuid())[0]
     self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
     # FIXME: incremental progress is not handled
