@@ -11,33 +11,33 @@ import bson
 
 from .internal import timestamp
 
-def _match_bundle(pat,bundle,indent=0):
-  if (type(bundle) is list) and (type(pat) is list):
-    #print ' '*indent,'LIST:'#,pat,bundle
+def _json_isomorphic(pat,data,indent=0):
+  if (type(data) is list) and (type(pat) is list):
+    #print ' '*indent,'LIST:'#,pat,data
     for subpat in pat:
-      if not any([_match_bundle(subpat,subbundle,indent+2) for subbundle in bundle]):
+      if not any([_json_isomorphic(subpat,subdata,indent+2) for subdata in data]):
         #print ' '*indent,'FAILED LIST'
         return None
 
-  elif (type(bundle) is dict) and (type(pat) is dict):
-    #print ' '*indent,'DICT:',pat.keys(),bundle.keys()
-    if not all([pat_k in bundle.keys() for (pat_k,pat_v) in pat.items()]):
+  elif (type(data) is dict) and (type(pat) is dict):
+    #print ' '*indent,'DICT:',pat.keys(),data.keys()
+    if not all([pat_k in data.keys() for (pat_k,pat_v) in pat.items()]):
       #print ' '*indent,'FAILED DICT (KEY)'
       return None
-    arry=[_match_bundle(pat_v,bundle[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]
-    #if not all([_match_bundle(pat_v,bundle[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]):
+    arry=[_json_isomorphic(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]
+    #if not all([_json_isomorphic(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]):
     if not all(arry):
       #print ' '*indent,'FAILED DICT (VALUE)'
       return None
 
   else: # scalar
-    #print ' '*indent,'SCALAR:',pat,bundle
-    if pat!=bundle:
+    #print ' '*indent,'SCALAR:',pat,data
+    if pat!=data:
       #print ' '*indent,'FAILED SCALAR'
       return None
 
   #print ' '*indent,'PASSED'
-  return bundle
+  return data
 
 class Datastore: # Abstract interface class
   def __init__(self):
@@ -205,19 +205,19 @@ class MongoDB(Datastore):
     # FIXME
     bundles = [r['bundles'] for r in agg_results]
     # Filter and return
-    return [b for b in bundles if _match_bundle(pattern,b)]
+    return [b for b in bundles if _json_isomorphic(pattern,b)]
  
   def write_bundle(self, bundle, xid):
     self._reconnect()
     bundle_id = self._proj.update( {'_id':bson.objectid.ObjectId(xid)}, {'$push': {'bundles': bundle}} )
     return True
 
-# FIXME: implement find_experiments, read_experiment_metadata, and find_bundles
+# FIXME: implement read_experiment_metadata, and find_bundles
 class Simple_Disk(Datastore):
   def __init__(self):
     self._project_path = None
 
-    # Check/create the data directory
+    # Check/create the data directory if necessary
     if not os.path.isdir(config.data_dir):
       logging.warning('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"') # This is unusual. Normally the data directory is already there. This might be a red flag for problems, but we can still carry on.
       os.mkdir(config.data_dir)
@@ -227,12 +227,38 @@ class Simple_Disk(Datastore):
       os.mkdir(self._project_path)
 
   def create_experiment_id(self, experiment_name):
+    # This is probably good enough to be unique. Don't run 1B parallel copies.
+    xid = experiment_name+'_'+'_'+timestamp()
     # Check/create an experiment directory
-    exp_path = os.path.join(self._project_path, experiment_name+'_'+timestamp())
+    exp_path = self._get_exp_path(xid)
     if not os.path.isdir(exp_path):
       os.mkdir(exp_path)
-    # XID is the path to the experiment directory
+    return xid
+
+  def _get_exp_path(self, xid):
+    exp_path = os.path.join(self._project_path, xid)
     return exp_path
+
+  def find_experiments(self, pattern):
+    project_dir = os.path.join(config.data_dir, config.project_name)
+    possible_experiments = os.listdir(project_dir)
+    found_experiments = []
+    for xdir in possible_experiments:
+      mdfile = reduce(os.path.join, [project_dir, xdir, 'metadata'])
+      if not os.path.isfile(mdfile):
+        continue # Someone's polluted the data directory
+      exp = {'metadata':json.load(open(mdfile,'r'))}
+      assert 'id' in exp['metadata'], 'Corrupted experiment metadata file'
+      if _json_isomorphic(pattern, exp):
+        xid = exp['metadata']['id']
+        found_experiments.append(xid)
+    return found_experiments
+
+  def read_experiment_metadata(self, xid):
+    meta_path = os.path.join(self._get_exp_path(xid), 'metadata')
+    metadata = json.load(open(meta_path,'r'))
+    assert 'id' in metadata, 'Experiment metadata file is corrupted'
+    return metadata
 
   def write_experiment_metadata(self, metadata, xid):
     # XID is the path to the experiment directory
@@ -241,13 +267,15 @@ class Simple_Disk(Datastore):
     logging.debug('Writing experiment metadata to disk:\n'+json.dumps(metadata,indent=2))
     json.dump(metadata,f,indent=2)
 
+  def find_bundles(self, pattern, xid):
+    assert False
+
   def write_bundle(self, bundle, xid):
     assert 'metadata' in bundle, 'Data bundle corrupted? No metadata found.'
     assert 'id' in bundle['metadata'], 'Data bundle corrupted? No ID in metadata.'
     bundle_id = bundle['metadata']['id']
 
-    # XID is the path to the experiment directory
-    f = open(os.path.join(xid, bundle_id), 'w')
+    f = open(os.path.join(self._get_exp_path(xid), bundle_id), 'w')
     logging.debug('Writing data bundle to disk:\n'+json.dumps(bundle,indent=2))
     json.dump(bundle,f,indent=2)
 
