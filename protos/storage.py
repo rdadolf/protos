@@ -11,11 +11,11 @@ import bson
 
 from .internal import timestamp
 
-def _json_isomorphic(pat,data,indent=0):
+def _json_subset(pat,data,indent=0):
   if (type(data) is list) and (type(pat) is list):
     #print ' '*indent,'LIST:'#,pat,data
     for subpat in pat:
-      if not any([_json_isomorphic(subpat,subdata,indent+2) for subdata in data]):
+      if not any([_json_subset(subpat,subdata,indent+2) for subdata in data]):
         #print ' '*indent,'FAILED LIST'
         return None
 
@@ -24,8 +24,8 @@ def _json_isomorphic(pat,data,indent=0):
     if not all([pat_k in data.keys() for (pat_k,pat_v) in pat.items()]):
       #print ' '*indent,'FAILED DICT (KEY)'
       return None
-    arry=[_json_isomorphic(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]
-    #if not all([_json_isomorphic(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]):
+    arry=[_json_subset(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]
+    #if not all([_json_subset(pat_v,data[pat_k],indent+2) for (pat_k,pat_v) in pat.items()]):
     if not all(arry):
       #print ' '*indent,'FAILED DICT (VALUE)'
       return None
@@ -205,14 +205,14 @@ class MongoDB(Datastore):
     # FIXME
     bundles = [r['bundles'] for r in agg_results]
     # Filter and return
-    return [b for b in bundles if _json_isomorphic(pattern,b)]
+    return [b for b in bundles if _json_subset(pattern,b)]
  
   def write_bundle(self, bundle, xid):
     self._reconnect()
     bundle_id = self._proj.update( {'_id':bson.objectid.ObjectId(xid)}, {'$push': {'bundles': bundle}} )
     return True
 
-# FIXME: implement read_experiment_metadata, and find_bundles
+# FIXME: implement find_bundles
 class Simple_Disk(Datastore):
   def __init__(self):
     self._project_path = None
@@ -230,14 +230,14 @@ class Simple_Disk(Datastore):
     # This is probably good enough to be unique. Don't run 1B parallel copies.
     xid = experiment_name+'_'+'_'+timestamp()
     # Check/create an experiment directory
-    exp_path = self._get_exp_path(xid)
-    if not os.path.isdir(exp_path):
-      os.mkdir(exp_path)
+    xpath = self._get_xpath(xid)
+    if not os.path.isdir(xpath):
+      os.mkdir(xpath)
     return xid
 
-  def _get_exp_path(self, xid):
-    exp_path = os.path.join(self._project_path, xid)
-    return exp_path
+  def _get_xpath(self, xid):
+    xpath = os.path.join(self._project_path, xid)
+    return xpath
 
   def find_experiments(self, pattern):
     project_dir = os.path.join(config.data_dir, config.project_name)
@@ -249,13 +249,13 @@ class Simple_Disk(Datastore):
         continue # Someone's polluted the data directory
       exp = {'metadata':json.load(open(mdfile,'r'))}
       assert 'id' in exp['metadata'], 'Corrupted experiment metadata file'
-      if _json_isomorphic(pattern, exp):
+      if _json_subset(pattern, exp):
         xid = exp['metadata']['id']
         found_experiments.append(xid)
     return found_experiments
 
   def read_experiment_metadata(self, xid):
-    meta_path = os.path.join(self._get_exp_path(xid), 'metadata')
+    meta_path = os.path.join(self._get_xpath(xid), 'metadata')
     metadata = json.load(open(meta_path,'r'))
     assert 'id' in metadata, 'Experiment metadata file is corrupted'
     return metadata
@@ -268,14 +268,19 @@ class Simple_Disk(Datastore):
     json.dump(metadata,f,indent=2)
 
   def find_bundles(self, pattern, xid):
-    assert False
+    xpath = self._get_xpath(xid)
+    fnames = os.listdir(xpath)
+    assert 'metadata' in fnames, 'Bad experiment id: '+str(xid)+' (no metadata)'
+    fnames.remove('metadata')
+    candidates = [json.load(open(os.path.join(xpath,f),'r')) for f in fnames]
+    return [b for b in candidates if _json_subset(pattern,b)]
 
   def write_bundle(self, bundle, xid):
     assert 'metadata' in bundle, 'Data bundle corrupted? No metadata found.'
     assert 'id' in bundle['metadata'], 'Data bundle corrupted? No ID in metadata.'
     bundle_id = bundle['metadata']['id']
 
-    f = open(os.path.join(self._get_exp_path(xid), bundle_id), 'w')
+    f = open(os.path.join(self._get_xpath(xid), bundle_id), 'w')
     logging.debug('Writing data bundle to disk:\n'+json.dumps(bundle,indent=2))
     json.dump(bundle,f,indent=2)
 
