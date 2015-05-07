@@ -19,10 +19,6 @@ class protocol:
 
 ### Protocol support functions for users ###
 
-# Shortcut to top-level project directory.
-def home():
-  return config.project_dir
-
 # Convenience wrapper for subprocess
 def call(cmd):
   # FIXME: do more here? maybe w/ logging

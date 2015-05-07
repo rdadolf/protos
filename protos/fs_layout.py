@@ -7,7 +7,7 @@ from .config import config
 
 # Expected project layout
 # 
-# project/
+# root/
 #   data/
 #   experiments/
 #   protocols/
@@ -25,16 +25,10 @@ def infer_from_exf(exf_path,config):
     return False
 
   # Infer and assign paths
-  experiments_dir = os.path.dirname(exf)
-  project_dir = os.path.dirname(experiments_dir)
-  protocol_dir = os.path.join(os.path.dirname(experiments_dir),'protocols')
-  data_dir = os.path.join(os.path.dirname(experiments_dir),'data')
-
-  # Pass to experiment configuration
-  config.experiments_dir = experiments_dir
-  config.project_dir = project_dir
-  config.protocol_dir = protocol_dir
-  config.data_dir = data_dir
+  config.experiments_dir = os.path.dirname(exf)
+  root_dir = os.path.dirname(config.experiments_dir)
+  config.protocol_dir = os.path.join(root_dir,'protocols')
+  config.data_dir = os.path.join(root_dir,'data')
 
   return True
 

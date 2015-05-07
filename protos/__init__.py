@@ -1,7 +1,7 @@
 __all__ = []
 # Enable native features
-from .protocol_support import protocol, home, call
-__all__.extend(['protocol','home','call'])
+from .protocol_support import protocol, call
+__all__.extend(['protocol','call'])
 from .experiment_support import experiment
 __all__.extend(['experiment'])
 from .data_bundles import Data_Bundle as Bundle, Void_Bundle
