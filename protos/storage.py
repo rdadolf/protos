@@ -212,7 +212,6 @@ class MongoDB(Datastore):
     bundle_id = self._proj.update( {'_id':bson.objectid.ObjectId(xid)}, {'$push': {'bundles': bundle}} )
     return True
 
-# FIXME: implement find_bundles
 class Simple_Disk(Datastore):
   def __init__(self):
     self._project_path = None
