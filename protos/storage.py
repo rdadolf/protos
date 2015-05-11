@@ -227,7 +227,7 @@ class Simple_Disk(Datastore):
 
   def create_experiment_id(self, experiment_name):
     # This is probably good enough to be unique. Don't run 1B parallel copies.
-    xid = experiment_name+'_'+'_'+timestamp()
+    xid = experiment_name+'_'+timestamp()
     # Check/create an experiment directory
     xpath = self._get_xpath(xid)
     if not os.path.isdir(xpath):
@@ -254,15 +254,16 @@ class Simple_Disk(Datastore):
     return found_experiments
 
   def read_experiment_metadata(self, xid):
-    meta_path = os.path.join(self._get_xpath(xid), 'metadata')
-    metadata = json.load(open(meta_path,'r'))
+    metapath = os.path.join(self._get_xpath(xid), 'metadata')
+    metadata = json.load(open(metapath,'r'))
     assert 'id' in metadata, 'Experiment metadata file is corrupted'
     return metadata
 
   def write_experiment_metadata(self, metadata, xid):
     # XID is the path to the experiment directory
     # FYI: Blows away previous metadata, even if it had more information.
-    f = open(os.path.join(xid, 'metadata'), 'w')
+    metapath = os.path.join(self._get_xpath(xid), 'metadata')
+    f = open(metapath,'w')
     logging.debug('Writing experiment metadata to disk:\n'+json.dumps(metadata,indent=2))
     json.dump(metadata,f,indent=2)
 
