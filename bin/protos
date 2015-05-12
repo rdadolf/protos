@@ -19,6 +19,17 @@ from protos.data_bundles import Token_Generator
 
 def load_exf(exf,config):
   ''' Reads an experiment file and returns a list of experiment decorator classes. '''
+  # As a convenience to the user, add the experiments directory to the import path.
+  # This should allow modular experiments.
+  # FIXME: we just run the first experiment right now, which means there's no
+  # way to "call" experiments from experiments (i.e.-not modular). Fix this.
+  # Maybe by stripping off the experiment decorator from sub-experiments?
+  xdir = os.path.abspath(config.experiments_dir)
+  if os.path.isdir(xdir):
+    sys.path.append(xdir)
+  else:
+    logging.error('Invalid experiment directory: '+xdir)
+
   with open(exf) as f:
     code = f.read()
     globs = dict()
