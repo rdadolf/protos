@@ -1,6 +1,6 @@
 import protos
+import protos.query
 import nose
-from functools import wraps
 
 def set_config(**kwargs):
   def test_decorator(func):

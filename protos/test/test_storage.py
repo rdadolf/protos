@@ -1,7 +1,6 @@
-import protos
-import protos.query
+from utils import *
 
-from utils import set_config
+##### Make sure adapters return sane values for null requests.
 
 @set_config(data_dir='/tmp/data', storage='none')
 def test_fake_expsearch():
