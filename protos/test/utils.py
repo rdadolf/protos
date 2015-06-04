@@ -9,6 +9,6 @@ def set_config(**kwargs):
       for (k,v) in kwargs.items():
         if hasattr(protos.config,k):
           setattr(protos.config,k,v)
-      func(*a,**kw)
+      return func(*a,**kw)
     return wrapper
   return test_decorator
