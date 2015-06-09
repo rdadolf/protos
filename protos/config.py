@@ -14,7 +14,7 @@ class config:
   preserve = False
 
   # Storage
-  storage = 'none' # mechanism name
+  storage = 'fake' # mechanism name
   storage_server = '127.0.0.1' # if necessary
 
   # Parameters

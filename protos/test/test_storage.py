@@ -2,7 +2,7 @@ from utils import *
 
 ##### Make sure adapters return sane values for null requests.
 
-@set_config(data_dir='/tmp/data', storage='none')
+@set_config(data_dir='/tmp/data', storage='fake')
 def test_fake_expsearch():
   xs = protos.query.search_experiments({})
   assert type(xs) is list, 'Bad return value'
