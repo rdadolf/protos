@@ -17,3 +17,8 @@ def test_disk_expsearch():
 #def test_mongo_expsearch():
 #  xs = protos.query.search_experiments({})
 #  assert type(xs) is list, 'Bad return value'
+
+# FIXME
+@set_config(storage='mysql', storage_server='127.0.0.1')
+def test_mysql_authentication():
+  pass
