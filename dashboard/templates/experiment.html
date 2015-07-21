@@ -1,0 +1,16 @@
+      <!-- Experiment -->
+        <div class="panel panel-default experiment" id="{{experiment.id}}">
+          <div class="experiment-id">{{ experiment.id }}</div>
+          <div class="experiment-loaded">0</div>
+          <div class="panel-heading experiment-summary"> <!-- Summary -->
+            <h4 class="experiment-name text-left">{{ experiment.name }}</h4>
+            <div class="progress experiment-progress text-right">
+              <div class="progress-bar experiment-progress-bar" role="experiment-progress" style="width: {{ experiment.progress }}%;">
+                <span class="experiment-progress-text">{{ experiment.time }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-body experiment-detail"> <!-- Detail -->
+            <div>Loading...</div><!-- This will be replaced dynamically. -->
+          </div>
+        </div>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+
+    <title>Protos</title>
+
+    <!-- Bootstrap -->
+    <link href="{{url_for('static',filename='style/bootstrap/css/bootstrap.min.css')}}" rel="stylesheet">
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <link href="{{url_for('static',filename='style/dashboard.css')}}" rel="stylesheet">
+  </head>
+  <body>
+
+    <!-- Banner title -->
+    <h1 id='title'>PROTOS</h1>
+
+    <!-- Nav bar -->
+    <nav class="navbar navbar-default">
+      <div class="container-fluid" id="banner">
+        <!-- no header --> 
+        <button type="button" class="btn btn-default navbar-btn navbar-left" onClick="request_experiments();">Refresh</button>
+        <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Recent</button>-->
+        <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Running</button>-->
+        <form class="navbar-form navbar-left" role="select-project" onSubmit="$('#activeProject').blur(); get_active_project(); return false;">
+          <div class="form-group">
+            <div class="input-group">
+              <div class="input-group-addon">Active Project</div>
+              <input type="text" class="form-control" id="activeProject" value="default">
+            </div>
+          </div>
+        </form>
+      </div>
+    </nav>
+
+    <!-- Experiment list -->
+    <div class="container-fluid" id="experiment_list">
+    </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="{{url_for('static',filename='style/jquery-1.11.3.min.js')}}"></script>
+    <script src="{{url_for('static',filename='style/bootstrap/js/bootstrap.min.js')}}"></script>
+
+    <!-- Load AJAX handlers -->
+    <script type=text/javascript>
+      $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
+    <script src="{{url_for('static',filename='ajax/utility.js')}}"></script>
+    <script src="{{url_for('static',filename='ajax/experiments.js')}}"></script>
+    <!-- Setup active page elements -->
+    <script>
+      $(function() { setup_experiment_callbacks(); });
+    </script>
+  </body>
+</html>

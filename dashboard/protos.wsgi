@@ -3,4 +3,4 @@ import sys
 sys.path.append('/var/www/protos')
 
 # Flask needs the "as applicaiton" part.
-from dashboard.dashboard import app as application
+from dashboard import app as application
