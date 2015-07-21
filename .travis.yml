@@ -7,6 +7,8 @@ install:
 #  - "pip install scipy"
 #  - "pip install sklearn"
   - "pip install pymongo"
+  - "pip install flask"
+  - "pip install psycopg2"
 # command to run tests
 script: nosetests
 
