@@ -5,6 +5,7 @@ import pwd
 import re
 import logging
 import psycopg2 as pg
+import psycopg2.extras as extras
 
 from ..config import config
 from ..internal import timestamp
@@ -17,7 +18,7 @@ class Transaction():
     self._conn = connection
     self._cur = None
   def __enter__(self):
-    self._cur = self._conn.cursor()
+    self._cur = self._conn.cursor(cursor_factory=extras.DictCursor)
     return self._cur # to the bound variable in the with block
   def __exit__(self, exc_type, exc_value, trace):
     if exc_type is None: # No error
@@ -28,12 +29,15 @@ class Transaction():
       return False # raise the exception 
 
 def _sanitize(s):
+  # A little draconian, but ensures that nothing bad gets through.
+  # (*only* variable-name-like characters are allowed)
   return re.sub(r'\W','',s)
 
 class Postgres(Datastore):
   def __init__(self):
     self._conn = None
     self._connect()
+    self._init_project_idempotently(config.project_name)
     pass
 
   def _disconnect(self):
@@ -54,19 +58,30 @@ class Postgres(Datastore):
     self._conn = pg.connect(host=config.storage_server, database='protos', user=username)
 
   def _init_project_idempotently(self, project_name):
-    sql='CREATE TABLE IF NOT EXISTS {0} (xid bigint, PRIMARY KEY (xid))'.format(_sanitize(project_name))
+    sql='CREATE TABLE IF NOT EXISTS "{0}" ("xid" bigserial, PRIMARY KEY (xid), "name" varchar(256), "host" varchar(256), "platform" varchar(256), "user" varchar(256))'.format(_sanitize(project_name))
     args=[]
-    with Transaction(self._conn) as X:
-      X.execute(sql, args)
+    with Transaction(self._conn) as x:
+      x.execute(sql, args)
     pass
 
   def create_experiment_id(self, experiment_name):
-    return '1' # FIXME
+    sql = 'INSERT INTO {0} ("name") VALUES (%s) RETURNING "xid"'.format(_sanitize(config.project_name))
+    args = [experiment_name]
+    with Transaction(self._conn) as x:
+      x.execute(sql,args)
+      xid = x.fetchone()['xid']
+      return str(xid)
 
   def find_experiments(self, pattern):
     return ['1'] # FIXME
 
   def read_experiment_metadata(self, xid):
+    sql = 'SELECT "xid" as "id","name","host","platform","user" FROM {0} WHERE "xid"=%s'.format(_sanitize(config.project_name))
+    args = xid
+    with Transaction(self._conn) as x:
+      x.execute(sql,args)
+      r=x.fetchone() # xids are unique
+      return dict(r)
     return {} # FIXME
 
   def write_experiment_metadata(self, metadata, xid):
