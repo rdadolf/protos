@@ -1,4 +1,5 @@
 import sys
+import os
 import os.path
 
 import flask
@@ -39,18 +40,21 @@ def load_experiment_list():
   mask = flask.json.loads(serialized_mask)
 
   response = []
+  os.environ['PGPASSFILE']='/var/www/flask_instance/pgpass'
+  os.environ['POSTGRES_USERNAME']='dashboard'
   exps = protos.query.search_experiments(mask)
-  #app.logger.debug(exps)
-  exps = range(1,10)
+  app.logger.debug(exps)
   for exp in exps:
-    #exp_data = exp.metadata()
+    exp_data = exp.metadata()
     # Expected fields: 'id', 'progress', 'name', 'time'
-    i = exp
-    exp_data = {
-      'id': 'id'+str(i),
-      'progress': 100*i/10,
-      'name': 'exp '+str(i),
-      'time': 'time'+str(i)}
+    #i = exp
+    #exp_data = {
+    #  'id': 'id'+str(i),
+    #  'progress': 100*i/10,
+    #  'name': 'exp '+str(i),
+    #  'time': 'time'+str(i)}
+    exp_data['progress'] = 50
+    exp_data['time'] = 'NOW'
     response.append(flask.render_template('experiment.html',experiment=exp_data))
 
   return flask.json.dumps(response)

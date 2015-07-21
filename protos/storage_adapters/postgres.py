@@ -57,8 +57,14 @@ class Postgres(Datastore):
 
     logging.debug('Connecting to Postgres server on '+config.storage_server)
     self._conn = pg.connect(host=config.storage_server, database='protos', user=username)
+    assert self._conn.closed==0, 'Could not connect to server'
+
+  def _ensure_connected(self):
+    if self._conn is None or self._conn.close!=0:
+      self._connect()
 
   def _init_project_idempotently(self, project_name):
+    self._ensure_connected()
     sql='CREATE TABLE IF NOT EXISTS "{0}" ("xid" bigserial, PRIMARY KEY (xid), "id" varchar(256), "name" varchar(256), "host" varchar(256), "platform" varchar(256), "user" varchar(256))'.format(_sanitize(project_name))
     args=[]
     with Transaction(self._conn) as x:
@@ -67,6 +73,7 @@ class Postgres(Datastore):
     pass
 
   def create_experiment_id(self, experiment_name):
+    self._ensure_connected()
     sql1 = 'INSERT INTO {0} ("name") VALUES (%s) RETURNING "xid"'.format(_sanitize(config.project_name))
     args1 = [experiment_name]
     with Transaction(self._conn) as x:
@@ -81,6 +88,7 @@ class Postgres(Datastore):
       return str(xid)
 
   def find_experiments(self, pattern):
+    self._ensure_connected()
     # Check pattern is sane.
     if type(pattern)!=dict:
       logging.error('Malformed pattern specified while finding experiments')
@@ -106,13 +114,13 @@ class Postgres(Datastore):
       logging.debug('PostgreSQL: '+x.mogrify(sql,args))
       x.execute(sql,args)
       rs = x.fetchall()
-      print rs
       return [r['id'] for r in rs]
 
     logging.error('Experiment query failed')
     return []
 
   def read_experiment_metadata(self, xid):
+    self._ensure_connected()
     sql = 'SELECT "id","name","host","platform","user" FROM {0} WHERE "xid"=%s'.format(_sanitize(config.project_name))
     args = xid
     with Transaction(self._conn) as x:
@@ -123,10 +131,13 @@ class Postgres(Datastore):
     return {} # FIXME
 
   def write_experiment_metadata(self, metadata, xid):
+    self._ensure_connected()
     return True # FIXME
 
   def find_bundles(self, pattern, xid):
+    self._ensure_connected()
     return [] # FIXME
  
   def write_bundle(self, bundle, xid):
+    self._ensure_connected()
     return True # FIXME
