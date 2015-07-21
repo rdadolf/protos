@@ -3,6 +3,15 @@ python:
   - "2.7"
 addons:
   postgresql: "9.3"
+
+install:
+  - "pip install numpy"
+#  - "pip install scipy"
+#  - "pip install sklearn"
+  - "pip install pymongo"
+  - "pip install flask"
+  - "pip install psycopg2"
+
 before_script:
   - psql -U postgres -c 'CREATE DATABASE protos'
   - psql -U postgres protos -c 'CREATE ROLE ro_group'
@@ -15,21 +24,13 @@ before_script:
   - psql -U postgres protos -c 'GRANT ALL ON DATABASE protos to rw_group'
   - psql -U postgres protos -c 'GRANT ALL ON ALL TABLES IN SCHEMA public to rw_group'
   - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGS FOR ROLE rw_group GRANT ALL ON ALL TABLES IN SCHEMA public to rw_group'
-  - psql -U postgres protos -c 'CREATE ROLE travis'
-  - psql -U postgres protos -c 'GRANT rw_group TO travis'
+  - psql -U postgres protos -c 'CREATE ROLE travis ENCRYPTED PASSWORD md51738181892ca5270aadd9692192227e0 IN ROLE rw_group' # password is "password" for travis testing
   # Debug:
   - psql -U postgres protos -c '\du'
   - psql -U postgres protos -c '\ddp'
+  - echo '127.0.0.1:5432:protos:travis:password' > ~/.pgpass'
+  - chmod 0600 ~/.pgpass
 
-# command to install dependencies
-install:
-  - "pip install numpy"
-#  - "pip install scipy"
-#  - "pip install sklearn"
-  - "pip install pymongo"
-  - "pip install flask"
-  - "pip install psycopg2"
-# command to run tests
 script: nosetests
 
 # A nudge to avoid checking in broken builds.

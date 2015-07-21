@@ -1,4 +1,5 @@
 from utils import *
+import os
 
 ##### Make sure adapters return sane values for null requests.
 
@@ -19,7 +20,7 @@ def test_disk_expsearch():
 #  assert type(xs) is list, 'Bad return value'
 
 # FIXME: don't use the production server
-STORAGE_SERVER='brinsop.int.seas.harvard.edu'
+STORAGE_SERVER=os.getenv('PROTOS_STORAGE_SERVER', '127.0.0.1')
 
 @set_config(storage='postgres')
 def test_sanitize():
