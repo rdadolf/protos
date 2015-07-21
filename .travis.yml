@@ -29,7 +29,7 @@ before_script:
   # Debug:
   - psql -U postgres protos -c '\du'
   - psql -U postgres protos -c '\ddp'
-  - echo '127.0.0.1:5432:protos:travis:password' > ~/.pgpass'
+  - echo '127.0.0.1:5432:protos:travis:password' > ~/.pgpass
   - chmod 0600 ~/.pgpass
 
 script: nosetests
