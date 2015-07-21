@@ -1,6 +1,26 @@
 language: python
 python:
   - "2.7"
+addons:
+  postgresql: "9.3"
+before_script:
+  - psql -U postgres -c 'CREATE DATABASE protos'
+  - psql -U postgres protos -c 'CREATE ROLE ro_group'
+  - psql -U postgres protos -c 'CREATE ROLE rw_group'
+  - psql -U postgres protos -c 'GRANT ro_group TO rw_group'
+  - psql -U postgres protos -c 'GRANT CONNECT, TEMP ON DATABASE protos TO ro_group'
+  - psql -U postgres protos -c 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO ro_group'
+  - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGES FOR ROLE rw_group GRANT SELECT ON TABLES TO ro_group'
+
+  - psql -U postgres protos -c 'GRANT ALL ON DATABASE protos to rw_group'
+  - psql -U postgres protos -c 'GRANT ALL ON ALL TABLES IN SCHEMA public to rw_group'
+  - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGS FOR ROLE rw_group GRANT ALL ON ALL TABLES IN SCHEMA public to rw_group'
+  - psql -U postgres protos -c 'CREATE ROLE travis'
+  - psql -U postgres protos -c 'GRANT rw_group TO travis'
+  # Debug:
+  - psql -U postgres protos -c '\du'
+  - psql -U postgres protos -c '\ddp'
+
 # command to install dependencies
 install:
   - "pip install numpy"
