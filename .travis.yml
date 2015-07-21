@@ -24,7 +24,7 @@ before_script:
   - psql -U postgres protos -c 'GRANT ALL ON DATABASE protos TO rw_group'
   - psql -U postgres protos -c 'GRANT ALL ON ALL TABLES IN SCHEMA public TO rw_group'
   - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGES FOR ROLE rw_group GRANT ALL ON TABLES TO rw_group'
-  - psql -U postgres protos -c 'CREATE ROLE travis ENCRYPTED PASSWORD md51738181892ca5270aadd9692192227e0 IN ROLE rw_group' # password is "password" for travis testing
+  - psql -U postgres protos -c "CREATE ROLE travis ENCRYPTED PASSWORD 'md51738181892ca5270aadd9692192227e0' IN ROLE rw_group" # password is "password" for travis testing
   # Debug:
   - psql -U postgres protos -c '\du'
   - psql -U postgres protos -c '\ddp'
