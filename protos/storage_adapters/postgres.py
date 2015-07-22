@@ -5,6 +5,7 @@ from functools import reduce
 import pwd
 import re
 import logging
+import json
 import psycopg2 as pg
 import psycopg2.extras as extras
 from datetime import datetime
@@ -16,7 +17,7 @@ from .adapters import Datastore, _json_subset
 # Currently, everything is a strong.
 # This is an odd choice, but not every storage adapter has the right types,
 # so we go to the least common denominator.
-METADATA_FIELDS=[
+EXP_METADATA_FIELDS=[
   ('id','varchar(256)'),
   ('name','varchar(256)'),
   ('host','varchar(256)'),
@@ -24,6 +25,11 @@ METADATA_FIELDS=[
   ('user','varchar(256)'),
   ('time','varchar(256)'),
   ('progress','varchar(4)'),
+]
+BDL_METADATA_FIELDS=[
+  ('id','varchar(256)'),
+  ('bundle_type','varchar(256)'),
+  ('time','varchar(256)'),
 ]
 
 # Psycopg 2.5 has something similar built-in, but several distro packages only
@@ -74,7 +80,7 @@ class Postgres(Datastore):
     assert self._conn.closed==0, 'Could not connect to server'
 
   def _ensure_connected(self):
-    if self._conn is None or self._conn.close!=0:
+    if self._conn is None or self._conn.closed!=0:
       self._connect()
 
   def _set_role_rw(self):
@@ -93,24 +99,37 @@ class Postgres(Datastore):
   def _init_project_idempotently(self, project_name):
     self._ensure_connected()
     self._set_role_ro()
-    query = "SELECT '{0}'::regclass".format(_sanitize(project_name))
-    need_new_table = False
+    xquery = "SELECT '{0}'::regclass".format(_sanitize(project_name))
+    bquery = "SELECT '{0}_bundles'::regclass".format(_sanitize(project_name))
+    need_new_xtable = False
+    need_new_btable = False
     with Transaction(self._conn) as x:
       try:
-        logging.debug('PostgreSQL: '+str(query))
-        x.execute(query)
+        logging.debug('PostgreSQL: '+str(xquery))
+        x.execute(xquery)
       except pg.ProgrammingError as e:
-        need_new_table = True
+        need_new_xtable = True
+    with Transaction(self._conn) as x:
+      try:
+        logging.debug('PostgreSQL: '+str(bquery))
+        x.execute(bquery)
+      except pg.ProgrammingError as e:
+        need_new_btable = True
 
-    if need_new_table:
+    if need_new_xtable:
       self._set_role_rw()
-      columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in METADATA_FIELDS])
-      sql='CREATE TABLE "{0}" ("xid" bigserial, PRIMARY KEY (xid), {1})'.format(_sanitize(project_name), columns)
-      args=[]
+      columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in EXP_METADATA_FIELDS])
+      xsql = 'CREATE TABLE "{0}" ("xid" bigserial, PRIMARY KEY ("xid"), {1})'.format(_sanitize(project_name), columns)
       with Transaction(self._conn) as x:
-        logging.debug('PostgreSQL: '+str(sql)+','+str(args))
-        x.execute(sql, args)
-      pass
+        logging.debug('PostgreSQL: '+str(xsql))
+        x.execute(xsql)
+    if need_new_btable:
+      self._set_role_rw()
+      columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in BDL_METADATA_FIELDS])
+      bsql = 'CREATE TABLE "{0}_bundles" ("bid" bigserial, PRIMARY KEY ("bid"), "xid" bigint REFERENCES "{0}", {1}, "data" text)'.format(_sanitize(project_name),  columns)
+      with Transaction(self._conn) as x:
+        logging.debug('PostgreSQL: '+str(bsql))
+        x.execute(bsql)
   
   def create_experiment_id(self, experiment_name):
     self._ensure_connected()
@@ -164,7 +183,7 @@ class Postgres(Datastore):
   def read_experiment_metadata(self, xid):
     self._ensure_connected()
     self._set_role_ro()
-    columns = ','.join(['"{0}"'.format(col) for (col,typ) in METADATA_FIELDS])
+    columns = ','.join(['"{0}"'.format(col) for (col,typ) in EXP_METADATA_FIELDS])
     sql = 'SELECT {0} FROM "{1}" WHERE "xid"=%s'.format(columns,_sanitize(config.project_name))
     args = [xid]
     with Transaction(self._conn) as x:
@@ -178,7 +197,7 @@ class Postgres(Datastore):
   def write_experiment_metadata(self, metadata, xid):
     self._ensure_connected()
     self._set_role_rw()
-    colnames = [col for (col,typ) in METADATA_FIELDS]
+    colnames = [col for (col,typ) in EXP_METADATA_FIELDS]
     mdnames = metadata.keys()
     # Only write valid MD values
     names = list(set(colnames)&set(mdnames))
@@ -211,9 +230,56 @@ class Postgres(Datastore):
   def find_bundles(self, pattern, xid):
     self._ensure_connected()
     self._set_role_ro()
-    return [] # FIXME
+
+    md = {}
+    if 'metadata' in pattern:
+      md = pattern['metadata']
+    dat = {}
+    if 'data' in pattern:
+      dat = pattern['data']
+    # FIXME: ignores files
+
+    colnames = [col for (col,typ) in BDL_METADATA_FIELDS]
+    mdnames = md.keys()
+    # Only match valid MD values
+    names = list(set(colnames)&set(mdnames))
+    # If we try to write an MD field we don't know about, alert us to the problem
+    if( len(names)<len(mdnames) ):
+      logging.warning('Unknown metadata fields "'+str( set(mdnames)-set(colnames) )+'"')
+    constraints = ['"xid"=%s']
+    constraints += ' AND '.join(['"{0}"=%s'.format(n) for n in names])
+    values = [xid]
+    values += [md[n] for n in names]
+
+    with Transaction(self._conn) as x:
+      qsql = 'SELECT * FROM "{0}_bundles" WHERE xid=%s'.format(_sanitize(config.project_name))
+      qsql_args = [xid]
+      x.execute(qsql, qsql_args)
+      bs = x.fetchall()
+      bundles = [{'metadata': {k:j[k] for (k,t) in BDL_METADATA_FIELDS}, 'data':json.loads(j['data'])} for j in bs]
+      print bundles
+    return [b for b in bundles if _json_subset(dat,b)]
+
  
   def write_bundle(self, bundle, xid):
     self._ensure_connected()
     self._set_role_rw()
-    return True # FIXME
+
+    bundle['metadata']['id'] = 0 # placeholder, will get replaced with bid (we just don't expect the user to remember to specify a dummy value
+    columns = [col for (col,typ) in BDL_METADATA_FIELDS]
+    colsql = ','.join(['"{0}"'.format(c) for c in columns])
+    values = [bundle['metadata'][c] for c in columns]
+    valsql = ','.join(['%s' for c in columns])
+    qsql = 'INSERT INTO "{0}_bundles" ("xid", {1}, "data") VALUES (%s,{2},%s) RETURNING "bid"'.format(_sanitize(config.project_name), colsql, valsql)
+    qsql_args = [xid]+values+[json.dumps(bundle['data'])]
+    bsql = 'UPDATE "{0}_bundles" SET "id"=%s WHERE "bid"=%s'.format(_sanitize(config.project_name))
+
+    with Transaction(self._conn) as x:
+      logging.debug('PostgreSQL: '+str(qsql))
+      x.execute(qsql,qsql_args)
+      bid = x.fetchone()['bid']
+      bsql_args = [bid,bid]
+      logging.debug('PostgreSQL: '+str(bsql))
+      x.execute(bsql,bsql_args)
+
+    return bid

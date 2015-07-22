@@ -1,5 +1,6 @@
 from utils import *
 import os
+import json
 
 STORAGE_SERVER=os.getenv('PROTOS_STORAGE_SERVER', '127.0.0.1')
 
@@ -25,17 +26,20 @@ class ProjectDB():
     self.pg._set_role_rw()
     with protos.storage_adapters.postgres.Transaction(self.pg._conn) as x:
       x.execute('DROP TABLE IF EXISTS test_project CASCADE')
+      x.execute('DROP TABLE IF EXISTS test_project_bundles CASCADE')
 
-@set_config(storage='postgres', storage_server=STORAGE_SERVER)
+@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_authentication():
-  pg = protos.storage_adapters.postgres.Postgres()
-  assert pg._conn.closed==0, 'Connection failed'
+  with ProjectDB() as pg:
+    assert pg._conn.closed==0, 'Connection failed'
+  
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_init():
   with ProjectDB() as pg:
     with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
       x.execute('SELECT xid FROM "test_project" WHERE false')
+      x.execute('SELECT xid FROM "test_project_bundles" WHERE false')
       # We don't care about the result. Just testing whether the table exists.
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
@@ -92,21 +96,46 @@ def test_find_experiment():
     xids = pg.find_experiments({})
     assert len(xids)==2, 'Couldnt find all the experiments'
 
+@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
+def test_bundles():
+  with ProjectDB() as pg:
+    x = pg.create_experiment_id('x')
+    b = {'metadata': {'bundle_type':'placeholder', 'time':'now', 'id':'-1'}, 'data': {'values':[0, 1, 2]}}
+
+    bid = pg.write_bundle(b, x)
+    b2 = pg.find_bundles({}, x)[0]
+    assert b['data']==b2['data'], 'data corrupted'
+    assert len(b['metadata'])==len(b2['metadata']), 'incomplete metadata'
+    assert b['metadata']['bundle_type']==b2['metadata']['bundle_type'], 'bundle type corrupted'
+    assert b['metadata']['time']==b2['metadata']['time'], 'time corrupted'
+    
+
 # This creates a persistent default project table. It is NOT a regression test.
-#@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='default')
-#def populate_test_db():
-#  pg = protos.storage_adapters.postgres.Postgres()
-#
-#  ids = range(1,7)
-#  xids = []
-#  for i in ids:
-#    xid = pg.create_experiment_id('exp_'+str(i))
-#    xids.append(xid)
-#    md = {'id': xid,
-#          'name': 'exp_'+str(i),
-#          'host': 'localhost',
-#          'platform': '*nix',
-#          'user': 'me',
-#          'time': '2015-07-22_14-38-11-522354_UTC',
-#          'progress': '60' }
-#    pg.write_experiment_metadata(md,xid)
+@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='default')
+def populate_test_db():
+  pg = protos.storage_adapters.postgres.Postgres()
+  pg._set_role_rw()
+  with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
+    x.execute('DROP TABLE "default_bundles"')
+    x.execute('DROP TABLE "default"')
+  pg = protos.storage_adapters.postgres.Postgres()
+
+  ids = range(1,5)
+  xids = []
+  for i in ids:
+    xid = pg.create_experiment_id('exp_'+str(i))
+    xids.append(xid)
+    md = {'id': xid,
+          'name': 'exp_'+str(i),
+          'host': 'localhost',
+          'platform': '*nix',
+          'user': 'me',
+          'time': protos.internal.timestamp(),
+          'progress': '60' }
+    pg.write_experiment_metadata(md,xid)
+    b = {'metadata': {'bundle_type':'placeholder', 'time':protos.internal.timestamp(), 'id':'-1'}, 'data': {'values':range(i,i+4)}}
+    pg.write_bundle(b,xid)
+    b2 = b
+    b2['data']['values'] = range(i,i+5)
+    b2['metadata']['time'] = protos.internal.timestamp()
+    pg.write_bundle(b2,xid)
