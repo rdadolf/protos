@@ -1,4 +1,9 @@
 <div>
-  Details for {{xid}}:
-
+  <h4>Bundles:</h4>
+  {% for b in bundles %}
+  <p>
+    bid:{{ b['metadata']['id'] }}
+    (type: {{ b['metadata']['bundle_type'] }} )
+  </p>
+  {% endfor %}
 </div>

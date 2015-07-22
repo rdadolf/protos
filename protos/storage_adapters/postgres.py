@@ -257,7 +257,6 @@ class Postgres(Datastore):
       x.execute(qsql, qsql_args)
       bs = x.fetchall()
       bundles = [{'metadata': {k:j[k] for (k,t) in BDL_METADATA_FIELDS}, 'data':json.loads(j['data'])} for j in bs]
-      print bundles
     return [b for b in bundles if _json_subset(dat,b)]
 
  

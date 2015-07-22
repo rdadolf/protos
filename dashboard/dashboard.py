@@ -21,12 +21,21 @@ def display_dashboard():
 
 @app.route('/experiment_info')
 def load_experiment_info():
-  xid = flask.request.args.get('xid',type=str)
-  project = flask.request.args.get('project', default='default', type=str)
+  try:
+    project = flask.request.args.get('project', default='default', type=str)
+    xid = flask.request.args.get('xid',type=str)
+  except ValueError:
+    flask.abort(400, description='Invalid arguments supplied to experiment list AJAX request.')
 
   protos.config.project_name = project
+    
+  os.environ['PGPASSFILE']='/var/www/flask_instance/pgpass'
+  os.environ['POSTGRES_USERNAME']='dashboard'
+  
+  exp = protos.query.exact_experiment(xid)
+  bundles = exp.search_bundles({})
 
-  return flask.render_template('experiment_details.html', xid=xid)
+  return flask.render_template('experiment_details.html', xid=xid, bundles=bundles)
 
 @app.route('/experiment_list')
 def load_experiment_list():
