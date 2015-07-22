@@ -14,12 +14,17 @@ def test_sanitize():
   for (lhs,rhs,why) in cases:
     assert sani(lhs)==rhs, why
 
-@set_config(storage='postgres', storage_server=STORAGE_SERVER)
-def reset_project(connection):
-  pg = protos.storage_adapters.postgres.Postgres()
-  with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
-    x.execute('DROP TABLE IF EXISTS test_project CASCADE')
-  pass
+# Auto-cleanup for test database tables
+class ProjectDB():
+  def __init__(self):
+    pass
+  def __enter__(self):
+    self.pg = protos.storage_adapters.postgres.Postgres()
+    return self.pg
+  def __exit__(self, exc_type, exc_value, trace):
+    self.pg._set_role_rw()
+    with protos.storage_adapters.postgres.Transaction(self.pg._conn) as x:
+      x.execute('DROP TABLE IF EXISTS test_project CASCADE')
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER)
 def test_authentication():
@@ -28,63 +33,80 @@ def test_authentication():
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_init():
-  pg = protos.storage_adapters.postgres.Postgres()
-  # should be a table named 'test_project' (from the config)
-  
-  with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
-    x.execute('SELECT xid FROM test_project WHERE false')
-    # We don't care about the result. Just testing whether the table exists.
-
-  reset_project(pg)
+  with ProjectDB() as pg:
+    with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
+      x.execute('SELECT xid FROM "test_project" WHERE false')
+      # We don't care about the result. Just testing whether the table exists.
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_xid():
-  pg = protos.storage_adapters.postgres.Postgres()
+  with ProjectDB() as pg:
+    xid = pg.create_experiment_id('x1')
+    with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
+      x.execute('SELECT * FROM test_project;')
+      r = x.fetchall()
+      assert len(r)==1, 'Incorrect number of results.'
 
-  xid = pg.create_experiment_id('x1')
-  with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
-    x.execute('SELECT * FROM test_project;')
-    r = x.fetchall()
-    assert len(r)==1, 'Incorrect number of results.'
-
-  xid = pg.create_experiment_id('x2')
-  with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
-    x.execute('SELECT * FROM test_project;')
-    r = x.fetchall()
-    assert len(r)==2, 'Incorrect number of results.'
-
-  reset_project(pg)
+    xid = pg.create_experiment_id('x2')
+    with protos.storage_adapters.postgres.Transaction(pg._conn) as x:
+      x.execute('SELECT * FROM test_project;')
+      r = x.fetchall()
+      assert len(r)==2, 'Incorrect number of results.'
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_experiment_metadata():
-  pg = protos.storage_adapters.postgres.Postgres()
-
-  xid = pg.create_experiment_id('x1')
-  md = pg.read_experiment_metadata(xid)
-  assert type(md)==type({}), 'Incorrect return type for experiment metadata'
-  assert ('id' in md) and (type(md['id'])==str), 'xid not converted to string id in experiment metadata output'
-
-  reset_project(pg)
+  with ProjectDB() as pg:
+    xid = pg.create_experiment_id('x1')
+    md = pg.read_experiment_metadata(xid)
+    assert type(md)==type({}), 'Incorrect return type for experiment metadata'
+    assert ('id' in md) and (type(md['id'])==str), 'xid not converted to string id in experiment metadata output'
+  
+    md = {'id': xid,
+          'name': 'example',
+          'host': 'localhost',
+          'platform': '*nix',
+          'user': 'me',
+          'time': '2015-07-22_14-38-11-522354_UTC',
+          'progress': '60' }
+    pg.write_experiment_metadata(md, xid)
+    md_back = pg.read_experiment_metadata(xid)
+    for (k1,v1) in md.items():
+      assert v1==md_back[k1], 'Incorrect key: '+str(k1)+' ('+v1+','+md_back[k1]+')'
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_find_experiment():
-  pg = protos.storage_adapters.postgres.Postgres()
-
-  x1 = pg.create_experiment_id('x1')
-  x2 = pg.create_experiment_id('x2')
-  q1 = {'metadata': {'id':x1}}
-  q2 = {'metadata': {'id':'1234'}}
-
-  xids = pg.find_experiments(q1)
-  assert len(xids)==1, 'Couldnt find the right experiments'
-  md = pg.read_experiment_metadata(xids[0])
-  assert md['name']=='x1', 'Retrieved the wrong experiment'
-
-  xids = pg.find_experiments(q2)
-  assert len(xids)==0, 'Found a nonexistent experiment'
+  with ProjectDB() as pg:
+    x1 = pg.create_experiment_id('x1')
+    x2 = pg.create_experiment_id('x2')
+    q1 = {'metadata': {'id':x1}}
+    q2 = {'metadata': {'id':'1234'}}
   
-  xids = pg.find_experiments({})
-  assert len(xids)==2, 'Couldnt find all the experiments'
+    xids = pg.find_experiments(q1)
+    assert len(xids)==1, 'Couldnt find the right experiments'
+    md = pg.read_experiment_metadata(xids[0])
+    assert md['name']=='x1', 'Retrieved the wrong experiment'
   
-  reset_project(pg)
-  pass
+    xids = pg.find_experiments(q2)
+    assert len(xids)==0, 'Found a nonexistent experiment'
+    
+    xids = pg.find_experiments({})
+    assert len(xids)==2, 'Couldnt find all the experiments'
+
+# This creates a persistent default project table. It is NOT a regression test.
+#@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='default')
+#def populate_test_db():
+#  pg = protos.storage_adapters.postgres.Postgres()
+#
+#  ids = range(1,7)
+#  xids = []
+#  for i in ids:
+#    xid = pg.create_experiment_id('exp_'+str(i))
+#    xids.append(xid)
+#    md = {'id': xid,
+#          'name': 'exp_'+str(i),
+#          'host': 'localhost',
+#          'platform': '*nix',
+#          'user': 'me',
+#          'time': '2015-07-22_14-38-11-522354_UTC',
+#          'progress': '60' }
+#    pg.write_experiment_metadata(md,xid)

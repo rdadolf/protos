@@ -7,10 +7,24 @@ import re
 import logging
 import psycopg2 as pg
 import psycopg2.extras as extras
+from datetime import datetime
 
 from ..config import config
 from ..internal import timestamp
 from .adapters import Datastore, _json_subset
+
+# Currently, everything is a strong.
+# This is an odd choice, but not every storage adapter has the right types,
+# so we go to the least common denominator.
+METADATA_FIELDS=[
+  ('id','varchar(256)'),
+  ('name','varchar(256)'),
+  ('host','varchar(256)'),
+  ('platform','varchar(256)'),
+  ('user','varchar(256)'),
+  ('time','varchar(256)'),
+  ('progress','varchar(4)'),
+]
 
 # Psycopg 2.5 has something similar built-in, but several distro packages only
 # have version 2.4. So we write our own.
@@ -63,25 +77,52 @@ class Postgres(Datastore):
     if self._conn is None or self._conn.close!=0:
       self._connect()
 
+  def _set_role_rw(self):
+    self._ensure_connected()
+    with Transaction(self._conn) as x:
+      sql = 'SET ROLE rw_group'
+      logging.debug('PostgreSQL: '+str(sql))
+      x.execute(sql)
+  def _set_role_ro(self):
+    self._ensure_connected()
+    with Transaction(self._conn) as x:
+      sql = 'SET ROLE ro_group'
+      logging.debug('PostgreSQL: '+str(sql))
+      x.execute(sql)
+
   def _init_project_idempotently(self, project_name):
     self._ensure_connected()
-    sql='CREATE TABLE IF NOT EXISTS "{0}" ("xid" bigserial, PRIMARY KEY (xid), "id" varchar(256), "name" varchar(256), "host" varchar(256), "platform" varchar(256), "user" varchar(256))'.format(_sanitize(project_name))
-    args=[]
+    self._set_role_ro()
+    query = "SELECT '{0}'::regclass".format(_sanitize(project_name))
+    need_new_table = False
     with Transaction(self._conn) as x:
-      logging.debug('PostgreSQL: '+str(sql)+','+str(args))
-      x.execute(sql, args)
-    pass
+      try:
+        logging.debug('PostgreSQL: '+str(query))
+        x.execute(query)
+      except pg.ProgrammingError as e:
+        need_new_table = True
 
+    if need_new_table:
+      self._set_role_rw()
+      columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in METADATA_FIELDS])
+      sql='CREATE TABLE "{0}" ("xid" bigserial, PRIMARY KEY (xid), {1})'.format(_sanitize(project_name), columns)
+      args=[]
+      with Transaction(self._conn) as x:
+        logging.debug('PostgreSQL: '+str(sql)+','+str(args))
+        x.execute(sql, args)
+      pass
+  
   def create_experiment_id(self, experiment_name):
     self._ensure_connected()
-    sql1 = 'INSERT INTO {0} ("name") VALUES (%s) RETURNING "xid"'.format(_sanitize(config.project_name))
+    self._set_role_rw()
+    sql1 = 'INSERT INTO "{0}" ("name") VALUES (%s) RETURNING "xid"'.format(_sanitize(config.project_name))
     args1 = [experiment_name]
     with Transaction(self._conn) as x:
       logging.debug('PostgreSQL: '+str(sql1)+','+str(args1))
       x.execute(sql1,args1)
       xid = x.fetchone()['xid']
       # Need to do this atomically
-      sql2 = 'UPDATE {0} SET "id"=%s WHERE "xid"=%s'.format(_sanitize(config.project_name))
+      sql2 = 'UPDATE "{0}" SET "id"=%s WHERE "xid"=%s'.format(_sanitize(config.project_name))
       args2 = [xid,xid]
       logging.debug('PostgreSQL: '+str(sql2)+','+str(args2))
       x.execute(sql2,args2)
@@ -89,6 +130,7 @@ class Postgres(Datastore):
 
   def find_experiments(self, pattern):
     self._ensure_connected()
+    self._set_role_ro()
     # Check pattern is sane.
     if type(pattern)!=dict:
       logging.error('Malformed pattern specified while finding experiments')
@@ -98,7 +140,7 @@ class Postgres(Datastore):
       logging.error('Invalid pattern: extraneous search fields')
       return []
     if pattern=={}:
-      sql = 'SELECT "id" FROM {0}'.format(_sanitize(config.project_name))
+      sql = 'SELECT "id" FROM "{0}"'.format(_sanitize(config.project_name))
       args = []
     else:
       if any([type(v)==dict or type(v)==list for (k,v) in pattern['metadata'].items()]):
@@ -107,7 +149,7 @@ class Postgres(Datastore):
         return []
       columns = ['"'+str(_sanitize(k))+'"' for k in pattern['metadata'].keys()]
       arg_str = ','.join([c+'=%s' for c in columns])
-      sql = 'SELECT "id" FROM {0} WHERE {1}'.format(_sanitize(config.project_name), arg_str)
+      sql = 'SELECT "id" FROM "{0}" WHERE {1}'.format(_sanitize(config.project_name), arg_str)
       args = pattern['metadata'].values()
 
     with Transaction(self._conn) as x:
@@ -121,23 +163,57 @@ class Postgres(Datastore):
 
   def read_experiment_metadata(self, xid):
     self._ensure_connected()
-    sql = 'SELECT "id","name","host","platform","user" FROM {0} WHERE "xid"=%s'.format(_sanitize(config.project_name))
-    args = xid
+    self._set_role_ro()
+    columns = ','.join(['"{0}"'.format(col) for (col,typ) in METADATA_FIELDS])
+    sql = 'SELECT {0} FROM "{1}" WHERE "xid"=%s'.format(columns,_sanitize(config.project_name))
+    args = [xid]
     with Transaction(self._conn) as x:
       logging.debug('PostgreSQL: '+str(sql)+','+str(args))
       x.execute(sql,args)
       r=x.fetchone() # xids are unique
       return dict(r)
-    return {} # FIXME
+    logging.error('Couldnt read experiment metadata')
+    return {}
 
   def write_experiment_metadata(self, metadata, xid):
     self._ensure_connected()
-    return True # FIXME
+    self._set_role_rw()
+    colnames = [col for (col,typ) in METADATA_FIELDS]
+    mdnames = metadata.keys()
+    # Only write valid MD values
+    names = list(set(colnames)&set(mdnames))
+    # If we try to write an MD field we don't know about, alert us to the problem
+    if( len(names)<len(mdnames) ):
+      logging.warning('Unknown metadata fields "'+str( set(mdnames)-set(colnames) )+'"')
+    colsql = ','.join(['"{0}"'.format(n) for n in names])
+    valsql = ','.join(['%s' for n in names])
+    values = [metadata[n] for n in names]
+
+    deconflict_sql = 'SELECT "xid" FROM "{0}" WHERE "xid"=%s'.format(_sanitize(config.project_name))
+    deconflict_args = [xid]
+    insert_sql = 'INSERT INTO "{0}" ({1}) VALUES ({2})'.format(_sanitize(config.project_name), colsql, valsql)
+    insert_args= values
+    update_sql = 'UPDATE "{0}" SET ({1}) = ({2}) WHERE "xid"=%s'.format(_sanitize(config.project_name), colsql, valsql)
+    update_args=values+[xid]
+
+    with Transaction(self._conn) as x:
+      logging.debug('PostgreSQL: '+x.mogrify(deconflict_sql,deconflict_args))
+      x.execute(deconflict_sql, deconflict_args)
+      r=x.fetchall()
+      if len(r)==0:
+        logging.debug('PostgreSQL: '+x.mogrify(insert_sql,insert_args))
+        x.execute(insert_sql,insert_args)
+      else:
+        logging.debug('PostgreSQL: '+x.mogrify(update_sql,update_args))
+        x.execute(update_sql,update_args)
+    return True
 
   def find_bundles(self, pattern, xid):
     self._ensure_connected()
+    self._set_role_ro()
     return [] # FIXME
  
   def write_bundle(self, bundle, xid):
     self._ensure_connected()
+    self._set_role_rw()
     return True # FIXME
