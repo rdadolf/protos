@@ -132,14 +132,14 @@ class Postgres(Datastore):
         logging.debug('PostgreSQL: '+str(xsql))
         x.execute(xsql)
     else: # Make sure all the columns are there.
-      actions = ', '.join(['ADD COLUMN "{0}" {1}'.format(col,typ) for (col,typ) in EXP_METADATA_FIELDS])
-      xsql = 'ALTER TABLE "{0}" {1}'.format(_sanitize(project_name), actions)
-      with Transaction(self._conn) as x:
-        logging.debug('PostgreSQL: '+str(xsql))
-        try:
-          x.execute(xsql)
-        except pg.ProgrammingError as e:
-          pass
+      for (col,typ) in EXP_METADATA_FIELDS:
+        xsql = 'ALTER TABLE "{0}" ADD COLUMN "{1}" {2}'.format(_sanitize(project_name), col, typ)
+        with Transaction(self._conn) as x:
+          logging.debug('PostgreSQL: '+str(xsql))
+          try:
+            x.execute(xsql)
+          except pg.ProgrammingError as e:
+            pass
 
     # BUNDLE TABLE
     if need_new_btable:
@@ -149,14 +149,14 @@ class Postgres(Datastore):
         logging.debug('PostgreSQL: '+str(bsql))
         x.execute(bsql)
     else: # Make sure all the columns are there.
-      actions = ', '.join(['ADD COLUMN "{0}" {1}'.format(col,typ) for (col,typ) in BDL_METADATA_FIELDS])
-      xsql = 'ALTER TABLE "{0}_bundles" {1}'.format(_sanitize(project_name), actions)
-      with Transaction(self._conn) as x:
-        logging.debug('PostgreSQL: '+str(xsql))
-        try:
-          x.execute(xsql)
-        except pg.ProgrammingError as e:
-          pass
+      for (col,typ) in BDL_METADATA_FIELDS:
+        xsql = 'ALTER TABLE "{0}_bundles" ADD COLUMN "{1}" {2}'.format(_sanitize(project_name), col, typ)
+        with Transaction(self._conn) as x:
+          logging.debug('PostgreSQL: '+str(xsql))
+          try:
+            x.execute(xsql)
+          except pg.ProgrammingError as e:
+            pass
   
   def create_experiment_id(self, experiment_name):
     self._ensure_connected()
