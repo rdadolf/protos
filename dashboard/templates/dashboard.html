@@ -51,7 +51,7 @@
         <button type="button" class="btn btn-default navbar-btn navbar-left" onClick="request_experiments();">Refresh</button>
         <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Recent</button>-->
         <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Running</button>-->
-        <form class="navbar-form navbar-left" role="select-project" onSubmit="$('#activeProject').blur(); get_active_project(); return false;">
+        <form class="navbar-form navbar-left" role="select-project" onSubmit="$('#activeProject').blur(); request_experiments(); return false;">
           <div class="form-group">
             <div class="input-group">
               <div class="input-group-addon">Active Project</div>
@@ -79,6 +79,13 @@
     <!-- Setup active page elements -->
     <script>
       $(function() { setup_experiment_callbacks(); });
+
+      {% if autoload %}
+      $(function() { 
+        $('#activeProject').val('{{ autoload }}');
+        request_experiments();
+      });
+      {% endif %}
     </script>
   </body>
 </html>

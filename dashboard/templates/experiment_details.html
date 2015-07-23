@@ -1,9 +1,25 @@
-<div>
-  <h4>Bundles:</h4>
-  {% for b in bundles %}
-  <p>
-    bid:{{ b['metadata']['id'] }}
-    (type: {{ b['metadata']['bundle_type'] }} )
-  </p>
-  {% endfor %}
+<div class="container-fluid">
+  <div class="row"><div class="col-xs-12">
+    {% if error %}
+    <div class="alert alert-danger">
+      <strong>Error: </strong>{{last_error}}
+    </div>
+    {% endif%}
+  </div>
+  <div class="row">
+    <div class="col-sm-4">
+      <table class="table table-striped">
+        <tr><th>ID</th><th>Type</th></tr>
+        {% for b in bundles %}
+        <tr>
+          <td>{{ b['metadata']['id'] }}</td>
+          <td>{{ b['metadata']['bundle_type'] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    <div class="col-sm-8">
+      DAG!
+    </div>
+  </div>
 </div>

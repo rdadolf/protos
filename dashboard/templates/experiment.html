@@ -4,9 +4,11 @@
           <div class="experiment-loaded">0</div>
           <div class="panel-heading experiment-summary"> <!-- Summary -->
             <h4 class="experiment-name text-left">{{ experiment.name }}</h4>
-            <div class="progress experiment-progress text-right">
-              <div class="progress-bar experiment-progress-bar" role="experiment-progress" style="width: {{ experiment.progress }}%;">
-                <span class="experiment-progress-text">{{ experiment.time }}</span>
+            <div class="text-right">
+              <div class="progress experiment-progress">
+                <div class="progress-bar {% if error %}progress-bar-danger{% endif %}" role="experiment-progress" style="width: {{ experiment.progress }}%;">
+                  <span class="experiment-progress-text">{{ experiment.time }}</span>
+                </div>
               </div>
             </div>
           </div>

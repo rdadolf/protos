@@ -15,9 +15,9 @@ app.debug=True
 @app.route('/')
 def display_dashboard():
   protos.config.load(os.path.join(app.instance_path,'protos.config'))
-  #protos.config.server_name = app.config['SERVER_NAME'].split(':')[0] # strip the port number, if there is one
-  #app.logger.debug(str([(x,getattr(protos.config,x)) for x in ['storage','storage_server','project_name']]))
-  return flask.render_template('dashboard.html')
+
+  autoload = flask.request.args.get('autoload',default=None,type=str)
+  return flask.render_template('dashboard.html', autoload=autoload)
 
 @app.route('/experiment_info')
 def load_experiment_info():
@@ -33,9 +33,12 @@ def load_experiment_info():
   os.environ['POSTGRES_USERNAME']='dashboard'
   
   exp = protos.query.exact_experiment(xid)
+  exp_md = exp.metadata()
   bundles = exp.search_bundles({})
 
-  return flask.render_template('experiment_details.html', xid=xid, bundles=bundles)
+  error = (exp_md['last_error']!='')
+  last_error = exp_md['last_error']
+  return flask.render_template('experiment_details.html', xid=xid, bundles=bundles, error=error,last_error=last_error)
 
 @app.route('/experiment_list')
 def load_experiment_list():
@@ -55,10 +58,12 @@ def load_experiment_list():
   #app.logger.debug(exps)
   for exp in exps:
     exp_data = exp.metadata()
-    # Expected fields: 'id', 'progress', 'name', 'time'
-    for field in ['id','progress','name','time']:
+    for field in ['id','progress','name','time','last_error']:
       if field not in exp_data:
         flask.abort(400, description='Experiment "{0}" missing metadata field: "{1}"'.format(str(exp.id),field))
-    response.append(flask.render_template('experiment.html',experiment=exp_data))
+    error=False
+    if exp_data['last_error']!='':
+      error=True
+    response.append(flask.render_template('experiment.html',experiment=exp_data,error=error))
 
   return flask.json.dumps(response)
