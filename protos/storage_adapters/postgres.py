@@ -24,7 +24,8 @@ EXP_METADATA_FIELDS=[
   ('platform','varchar(256)'),
   ('user','varchar(256)'),
   ('time','varchar(256)'),
-  ('progress','varchar(4)'),
+  ('progress','varchar(10)'),
+  ('last_error','varchar(256)')
 ]
 BDL_METADATA_FIELDS=[
   ('id','varchar(256)'),

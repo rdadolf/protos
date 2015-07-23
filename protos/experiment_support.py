@@ -84,8 +84,11 @@ class Experiment:
     self._metadata['user'] = pwd.getpwuid(os.getuid())[0]
     self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
-    # FIXME: incremental progress is not handled
+    self._metadata['progress'] = 0
+    self._metadata['last_error'] = ''
 
+    progress_count = 0
+    progress_total = len(self._schedule)
     for (f,tok,a,kw) in self._schedule:
       # Replace data bundle tokens with actual data bundles
       # First for keyword arguments
@@ -106,11 +109,21 @@ class Experiment:
         os.chdir(d)
         # FIXME: Capture timing information?
         print('  Running protocol '+str(f.__name__))
-        bundle = f(xdata,*a,**kw)
-        assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
+        try:
+          bundle = f(xdata,*a,**kw)
+          assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
+        except Exception, e:
+          self._metadata['last_error'] = str(e)
+          self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+          raise
 
       # Now persist the bundle, for the record and for incremental re-eval later
       bundle._persist()
+
+      # Update our progress
+      progress_count += 1
+      self._metadata['progress'] = str(100*progress_count/progress_total)
+      self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
       self._bundles[tok.id] = bundle
 
