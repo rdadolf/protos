@@ -116,20 +116,46 @@ class Postgres(Datastore):
       except pg.ProgrammingError as e:
         need_new_btable = True
 
-    if need_new_xtable:
+    try:
       self._set_role_rw()
+    except pg.ProgrammingError as e:
+      # Read-only user
+      return
+
+    # EXP TABLE
+    self._set_role_rw()
+    if need_new_xtable:
       columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in EXP_METADATA_FIELDS])
       xsql = 'CREATE TABLE "{0}" ("xid" bigserial, PRIMARY KEY ("xid"), {1})'.format(_sanitize(project_name), columns)
       with Transaction(self._conn) as x:
         logging.debug('PostgreSQL: '+str(xsql))
         x.execute(xsql)
+    else: # Make sure all the columns are there.
+      actions = ', '.join(['ADD COLUMN "{0}" {1}'.format(col,typ) for (col,typ) in EXP_METADATA_FIELDS])
+      xsql = 'ALTER TABLE "{0}" {1}'.format(_sanitize(project_name), actions)
+      with Transaction(self._conn) as x:
+        logging.debug('PostgreSQL: '+str(xsql))
+        try:
+          x.execute(xsql)
+        except pg.ProgrammingError as e:
+          pass
+
+    # BUNDLE TABLE
     if need_new_btable:
-      self._set_role_rw()
       columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in BDL_METADATA_FIELDS])
       bsql = 'CREATE TABLE "{0}_bundles" ("bid" bigserial, PRIMARY KEY ("bid"), "xid" bigint REFERENCES "{0}", {1}, "data" text)'.format(_sanitize(project_name),  columns)
       with Transaction(self._conn) as x:
         logging.debug('PostgreSQL: '+str(bsql))
         x.execute(bsql)
+    else: # Make sure all the columns are there.
+      actions = ', '.join(['ADD COLUMN "{0}" {1}'.format(col,typ) for (col,typ) in BDL_METADATA_FIELDS])
+      xsql = 'ALTER TABLE "{0}_bundles" {1}'.format(_sanitize(project_name), actions)
+      with Transaction(self._conn) as x:
+        logging.debug('PostgreSQL: '+str(xsql))
+        try:
+          x.execute(xsql)
+        except pg.ProgrammingError as e:
+          pass
   
   def create_experiment_id(self, experiment_name):
     self._ensure_connected()
