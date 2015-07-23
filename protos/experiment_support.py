@@ -1,4 +1,5 @@
 import logging
+import sys
 import os
 import os.path
 from functools import reduce
@@ -112,7 +113,9 @@ class Experiment:
         try:
           bundle = f(xdata,*a,**kw)
           assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
-        except Exception, e:
+        except:
+          e = sys.exc_info()[1]
+          logging.error('Protocol "'+str(f.__name__)+'" failed.')
           self._metadata['last_error'] = str(e)
           self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
           raise
