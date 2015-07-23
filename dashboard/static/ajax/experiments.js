@@ -72,7 +72,7 @@ function load_experiment(exp, xid) {
     //dataType: "JSON",
     dataType:"HTML",
     url: $SCRIPT_ROOT+'/experiment_info',
-    data: {xid: xid},
+    data: {xid: xid, project:get_active_project()},
     timeout: 5000,
   })
   .done( function(response, stat, xhr) {
