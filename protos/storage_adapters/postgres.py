@@ -222,7 +222,11 @@ class Postgres(Datastore):
       r=x.fetchone() # xids are unique
       retval = dict(r)
       # FIXME: patch tags (this is a hack)
-      retval['tags'] = json.loads(retval['tags'])
+      logging.debug('RETVAL[tags]: '+str(type(retval['tags']))+','+str(retval['tags']))
+      if retval['tags'] is not None and retval['tags']!='':
+        retval['tags'] = json.loads(retval['tags'])
+      else:
+        retval['tags'] = []
       return retval
     logging.error('Couldnt read experiment metadata')
     return {}
@@ -241,7 +245,8 @@ class Postgres(Datastore):
     valsql = ','.join(['%s' for n in names])
     mdvalues = dict(metadata) # copy
     # FIXME: patch tags (this is a hack)
-    mdvalues['tags'] = json.dumps(mdvalues['tags'])
+    if 'tags' in mdvalues:
+      mdvalues['tags'] = json.dumps(mdvalues['tags'])
     values = [str(mdvalues[n]) for n in names]
 
     deconflict_sql = 'SELECT "xid" FROM "{0}" WHERE "xid"=%s'.format(_sanitize(config.project_name))
