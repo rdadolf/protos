@@ -65,13 +65,22 @@ def test_experiment_metadata():
     assert type(md)==type({}), 'Incorrect return type for experiment metadata'
     assert ('id' in md) and (type(md['id'])==str), 'xid not converted to string id in experiment metadata output'
   
+    # Test with a full MD
     md = {'id': xid,
           'name': 'example',
           'host': 'localhost',
           'platform': '*nix',
           'user': 'me',
           'time': '2015-07-22_14-38-11-522354_UTC',
+          'tags': ['tag1','tag2'],
           'progress': '60' }
+    pg.write_experiment_metadata(md, xid)
+    md_back = pg.read_experiment_metadata(xid)
+    for (k1,v1) in md.items():
+      assert v1==md_back[k1], 'Incorrect key: '+str(k1)+' ('+v1+','+md_back[k1]+')'
+
+    # Test with an empty MD
+    md = {'id': xid}
     pg.write_experiment_metadata(md, xid)
     md_back = pg.read_experiment_metadata(xid)
     for (k1,v1) in md.items():
