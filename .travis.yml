@@ -3,20 +3,18 @@ python:
   - "2.7"
 addons:
   postgresql: "9.3"
-
 env:
-# To disable psql's annoying paging.
+  # To disable psql's annoying paging.
   - PAGER=cat
 install:
   - "pip install numpy"
-#  - "pip install scipy"
-#  - "pip install sklearn"
   - "pip install pymongo"
   - "pip install flask"
   - "pip install psycopg2"
 
 before_script:
   - psql -U postgres -c 'CREATE DATABASE protos'
+  - psql -U postgres protos -c '\l' # DEBUG
   - psql -U postgres protos -c 'CREATE ROLE ro_group'
   - psql -U postgres protos -c 'CREATE ROLE rw_group'
   - psql -U postgres protos -c 'GRANT ro_group TO rw_group'
@@ -27,14 +25,13 @@ before_script:
   - psql -U postgres protos -c 'GRANT ALL ON DATABASE protos TO rw_group'
   - psql -U postgres protos -c 'GRANT ALL ON ALL TABLES IN SCHEMA public TO rw_group'
   - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGES FOR ROLE rw_group GRANT ALL ON TABLES TO rw_group'
-  - psql -U postgres protos -c '\l'
-  - psql -U postgres protos -c '\du'
-  - psql -U postgres travis -c '\dt'
+  # Blow away the old travis user.
+  - psql -U postgres -c 'DROP DATABASE IF EXISTS travis'
   - psql -U postgres protos -c 'DROP ROLE IF EXISTS travis'
+  # Recreate a travis user in our own image.
   - psql -U postgres protos -c "CREATE ROLE travis LOGIN INHERIT ENCRYPTED PASSWORD 'md51738181892ca5270aadd9692192227e0' IN ROLE rw_group" # password is "password" for travis testing
-  # Debug:
-  - psql -U postgres protos -c '\du'
-  - psql -U postgres protos -c '\ddp'
+  - psql -U postgres protos -c '\du' # DEBUG
+  - psql -U postgres protos -c '\ddp' # DEBUG
   - echo '127.0.0.1:5432:protos:travis:password' > ~/.pgpass
   - chmod 0600 ~/.pgpass
 
