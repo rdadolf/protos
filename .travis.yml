@@ -4,6 +4,9 @@ python:
 addons:
   postgresql: "9.3"
 
+env:
+# To disable psql's annoying paging.
+  - PAGER=cat
 install:
   - "pip install numpy"
 #  - "pip install scipy"
@@ -26,6 +29,7 @@ before_script:
   - psql -U postgres protos -c 'ALTER DEFAULT PRIVILEGES FOR ROLE rw_group GRANT ALL ON TABLES TO rw_group'
   - psql -U postgres protos -c '\l'
   - psql -U postgres protos -c '\du'
+  - psql -U postgres travis -c '\dt'
   - psql -U postgres protos -c 'DROP ROLE IF EXISTS travis'
   - psql -U postgres protos -c "CREATE ROLE travis LOGIN INHERIT ENCRYPTED PASSWORD 'md51738181892ca5270aadd9692192227e0' IN ROLE rw_group" # password is "password" for travis testing
   # Debug:
