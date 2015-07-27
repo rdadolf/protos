@@ -35,10 +35,9 @@ def load_experiment_info():
   exp = protos.query.exact_experiment(xid)
   exp_md = exp.metadata()
   bundles = exp.search_bundles({})
+  bundles_md = [b['metadata'] for b in bundles]
 
-  error = (exp_md['last_error']!='')
-  last_error = exp_md['last_error']
-  return flask.render_template('experiment_details.html', xid=xid, bundles=bundles, error=error,last_error=last_error)
+  return flask.render_template('experiment_details.html', exp_md=exp_md, bundles_md=bundles_md, has_error=(exp_md['last_error']!=''))
 
 @app.route('/experiment_list')
 def load_experiment_list():
@@ -58,7 +57,7 @@ def load_experiment_list():
   #app.logger.debug(exps)
   for exp in exps:
     exp_data = exp.metadata()
-    for field in ['id','progress','name','time','last_error']:
+    for field in ['id','progress','name','time','tags','last_error']:
       if field not in exp_data:
         flask.abort(400, description='Experiment "{0}" missing metadata field: "{1}"'.format(str(exp.id),field))
     error=False

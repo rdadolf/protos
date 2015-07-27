@@ -45,9 +45,13 @@ function add_experiment_to_list(html) {
 // "Active" experiments are ones that are currently visible
 function activate_experiment(exp) {
   $(exp).find('div.experiment-detail:first').css('display','block');
+  $(exp).find('span.experiment-toggle-closed').css('display','none');
+  $(exp).find('span.experiment-toggle-open').css('display','block');
 }
 function deactivate_experiment(exp) {
   $(exp).find('div.experiment-detail:first').css('display','none');
+  $(exp).find('span.experiment-toggle-closed').css('display','block');
+  $(exp).find('span.experiment-toggle-open').css('display','none');
 }
 function is_experiment_active(exp) {
   disp = $(exp).find('div.experiment-detail:first').css('display');
@@ -90,7 +94,7 @@ function load_experiment(exp, xid) {
 }
 
 function handle_experiment_click(ev) {
-  exp = ev.delegateTarget;
+  exp = $(ev.delegateTarget).parents('.experiment');
 
   if( is_experiment_active(exp) ) {
     deactivate_experiment(exp);
@@ -104,5 +108,5 @@ function handle_experiment_click(ev) {
   return false;
 }
 function setup_experiment_callbacks() {
-  $('div.experiment').on('click',handle_experiment_click);
+  $('span.experiment-toggle').on('click',handle_experiment_click);
 }

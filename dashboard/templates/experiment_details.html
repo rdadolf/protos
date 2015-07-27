@@ -1,19 +1,24 @@
 <div class="container-fluid">
   <div class="row"><div class="col-xs-12">
-    {% if error %}
+    {% if has_error %}
     <div class="alert alert-danger">
-      <strong>Error: </strong>{{last_error}}
+      <strong>Error: </strong>{{ exp_md.last_error }}
     </div>
     {% endif%}
-  </div>
+  </div></div>
+  <div class="row"><div class="col-xs-12">
+    <p>{% for tag in exp_md['tags'] %}
+      <span class="label label-default">{{ tag }}</span>
+    {% endfor %}</p>
+  </div></div>
   <div class="row">
     <div class="col-sm-4">
       <table class="table table-striped">
         <tr><th>ID</th><th>Type</th></tr>
-        {% for b in bundles %}
+        {% for b in bundles_md %}
         <tr>
-          <td>{{ b['metadata']['id'] }}</td>
-          <td>{{ b['metadata']['bundle_type'] }}</td>
+          <td>{{ b['id'] }}</td>
+          <td>{{ b['bundle_type'] }}</td>
         </tr>
         {% endfor %}
       </table>

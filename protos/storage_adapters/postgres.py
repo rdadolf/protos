@@ -24,6 +24,7 @@ EXP_METADATA_FIELDS=[
   ('platform','varchar(256)'),
   ('user','varchar(256)'),
   ('time','varchar(256)'),
+  ('tags','varchar(1024)'),
   ('progress','varchar(10)'),
   ('last_error','varchar(256)')
 ]
@@ -174,6 +175,8 @@ class Postgres(Datastore):
       x.execute(sql2,args2)
       return str(xid)
 
+  # FIXME: tag filters currently don't work
+  #   solution: allow non-equality filters (more than just "x=y")
   def find_experiments(self, pattern):
     self._ensure_connected()
     self._set_role_ro()
@@ -217,7 +220,10 @@ class Postgres(Datastore):
       logging.debug('PostgreSQL: '+str(sql)+','+str(args))
       x.execute(sql,args)
       r=x.fetchone() # xids are unique
-      return dict(r)
+      retval = dict(r)
+      # FIXME: patch tags (this is a hack)
+      retval['tags'] = json.loads(retval['tags'])
+      return retval
     logging.error('Couldnt read experiment metadata')
     return {}
 
@@ -233,7 +239,10 @@ class Postgres(Datastore):
       logging.warning('Unknown metadata fields "'+str( set(mdnames)-set(colnames) )+'"')
     colsql = ','.join(['"{0}"'.format(n) for n in names])
     valsql = ','.join(['%s' for n in names])
-    values = [metadata[n] for n in names]
+    mdvalues = dict(metadata) # copy
+    # FIXME: patch tags (this is a hack)
+    mdvalues['tags'] = json.dumps(mdvalues['tags'])
+    values = [str(mdvalues[n]) for n in names]
 
     deconflict_sql = 'SELECT "xid" FROM "{0}" WHERE "xid"=%s'.format(_sanitize(config.project_name))
     deconflict_args = [xid]

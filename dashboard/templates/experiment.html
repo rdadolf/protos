@@ -3,8 +3,14 @@
           <div class="experiment-id">{{ experiment.id }}</div>
           <div class="experiment-loaded">0</div>
           <div class="panel-heading experiment-summary"> <!-- Summary -->
-            <h4 class="experiment-name text-left">{{ experiment.name }}</h4>
-            <div class="text-right">
+            <div class="experiment-summary-left text-left btn-group">
+              <span type="button" class="btn btn-default btn-sm experiment-toggle">
+                <span class="glyphicon glyphicon-triangle-right experiment-toggle-closed"></span>
+                <span class="glyphicon glyphicon-triangle-bottom experiment-toggle-open"></span>
+              </span>
+              <span class="experiment-name">{{ experiment.name }} ({{ experiment.host }})</span>
+            </div>
+            <div class="experiment-summary-right text-right">
               <div class="progress experiment-progress">
                 <div class="progress-bar {% if error %}progress-bar-danger{% endif %}" role="experiment-progress" style="width: {{ experiment.progress }}%;">
                   <span class="experiment-progress-text">{{ experiment.time }}</span>
