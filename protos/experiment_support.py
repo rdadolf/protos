@@ -46,6 +46,18 @@ class Namespace:
   def __init__(self, nsroot):
     self._nsroot = nsroot
 
+# Built-ins are special pseudo-protocols that are provided by protos itself.
+# These functions are called when the experiment is built, not run.
+# These may or may not return bundles.
+class Builtins(Namespace):
+  def __init__(self, exp, nsroot):
+    Namespace.__init__(self, nsroot)
+    self.exp = exp
+
+  def tag(self, t):
+    self.exp._metadata['tags'].append(str(t))
+    return None
+
 class Experiment:
   # Be careful, this class is exposed to the user. Don't let stray data escape.
   def __init__(self,exp_deco):
@@ -55,8 +67,10 @@ class Experiment:
     self._name = exp_deco.name
     self._metadata = {
       'name': self._name,
+      'tags': [],
     }
     self._nsroot = self # for namespace resolution
+    self.builtin = Builtins(self, self._nsroot) # instantiate our builtin protocols
 
     # Initialize our storage interface
     assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
