@@ -32,9 +32,12 @@ body {
 #title {
   font-size: 64pt;
   font-family: 'molotregular', 'Trebuchet MS', 'Verdana', Sans-serif;
-  margin-top: 32pt;
+  margin-top: 0pt;
   margin-bottom: 0px;
   line-height: 0.8;
+}
+#title-whitespace {
+  margin-top: 32pt;
 }
 
 #banner {
@@ -44,9 +47,15 @@ body {
 /* Navbar style */
 .navbar {
   margin-bottom: 0px;
-  border-width: 1px 0px 0px 0px;
+  border: 0px;
   box-shadow: 0px 2px 1px grey;
 }
+.navbar-form {
+  padding-top: 0px;
+  padding-bottom: 0px;
+  border-style: none;
+}
+
 
 /* Filter style */
 .xfilter {
@@ -55,6 +64,9 @@ body {
   padding-top: 7px;
   padding-bottom: 5px;
   margin-bottom: 15px;
+}
+.form-group-xfilter {
+  margin-bottom: 0px;
 }
 
 /* Experiment style */
