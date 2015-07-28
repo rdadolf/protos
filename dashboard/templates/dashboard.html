@@ -49,8 +49,6 @@
       <div class="container-fluid" id="banner">
         <!-- no header --> 
         <button type="button" class="btn btn-default navbar-btn navbar-left" onClick="request_experiments();">Refresh</button>
-        <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Recent</button>-->
-        <!--<button type="button" class="btn btn-default navbar-btn navbar-left">Running</button>-->
         <form class="navbar-form navbar-left" role="select-project" onSubmit="$('#activeProject').blur(); request_experiments(); return false;">
           <div class="form-group">
             <div class="input-group">
@@ -61,6 +59,30 @@
         </form>
       </div>
     </nav>
+
+    <!-- Filter -->
+    <div class="container-fluid xfilter">
+      <div class="row">
+        <div class="col-xs-12">
+          <form class="form" role="filter" onSubmit="$('#activeFilter').blur(); request_experiments(); return false;">
+            <div class="form-group">
+              <div class="input-group">
+                <div class="input-group-addon">Experiment filter</div>
+                <input type="text" id="activeFilter" class="form-control"></textarea>
+              </div>
+            </div>
+            <!-- <button type="submit" class="btn btn-default">Filter</button> -->
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flash message area -->
+    <div class="container-fluid">
+      <div id="flash_frame">
+      {{ error|safe }}
+      </div>
+    </div>
 
     <!-- Experiment list -->
     <div class="container-fluid" id="experiment_list">
@@ -80,12 +102,14 @@
     <script>
       $(function() { setup_experiment_callbacks(); });
 
-      {% if autoload %}
+      $(function() {
+        $('#activeFilter').val('{{ filter|safe }}');
+      });
+
       $(function() { 
-        $('#activeProject').val('{{ autoload }}');
+        $('#activeProject').val('{{ autoload|e }}');
         request_experiments();
       });
-      {% endif %}
     </script>
   </body>
 </html>

@@ -16,10 +16,19 @@ app.debug=True
 def display_dashboard():
   protos.config.load(os.path.join(app.instance_path,'protos.config'))
 
-  autoload = flask.request.args.get('autoload',default=None,type=str)
-  xfilter = flask.request.args.get('filter',default={},type=str)
+  autoload = flask.request.args.get('autoload',default='default',type=str)
+  xfilter = flask.request.args.get('filter',default='{}',type=str)
 
-  return flask.render_template('dashboard.html', autoload=autoload, filter=xfilter)
+  try:
+    xfilter = flask.json.dumps(flask.json.loads(xfilter))
+    error = ''
+  except ValueError as e:
+    error_type = type(e).__name__
+    error_msg = 'Invalid experiment filter in URL: '+str(e)
+    error = flask.render_template('flash_alert.html',type=error_type,message=error_msg)
+    xfilter = '{}'
+
+  return flask.render_template('dashboard.html', autoload=autoload, filter=xfilter, error=error)
 
 @app.route('/experiment_info')
 def load_experiment_info():
