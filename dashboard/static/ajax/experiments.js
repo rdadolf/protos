@@ -5,13 +5,20 @@ function get_active_project() {
   return $('#activeProject').val();
 }
 function get_experiment_mask() {
-  return {};
+  mask = String($('#activeFilter').val());
+  console.log(mask);
+  try {
+    JSON.parse(mask);
+  } catch(e) {
+    flash_error("","Invalid experiment filter. "+e);
+    mask = '{}';
+  }
+  return mask;
 }
 function request_experiments() {
   //console.log('Requesting experiments');
   project = get_active_project();
   mask = get_experiment_mask();
-  serialized_mask = JSON.stringify(mask);
 
   // Placeholder while request is going out.
   $('#experiment_list').prepend('<div>Loading...</div>')
@@ -19,7 +26,7 @@ function request_experiments() {
   $.ajax({
     dataType: "JSON",
     url: $SCRIPT_ROOT+'/experiment_list',
-    data: {'project': project, 'mask': serialized_mask},
+    data: {'project': project, 'mask': mask},
     timeout: 5000,
   })
   .done( function(response, stat, xhr) {
@@ -30,10 +37,10 @@ function request_experiments() {
   .fail( function(xhr, error_type, error_msg) {
     $('#experiment_list').empty();
     if( xhr.status==0 ) { // Likely a network error
-      $('#experiment_list').prepend(alert_box(xhr.status,"Couldn't communicate with server."));
+      flash_error(xhr.status, "Couldn't communicate with server.");
     } else {
       error_detail = $(xhr.responseText).siblings('p').text();
-      $('#experiment_list').prepend(alert_box(xhr.status+' '+error_msg, error_detail));
+      flash_error(xhr.status+' '+error_msg, error_detail);
     }
   });
 }

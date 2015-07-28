@@ -175,7 +175,7 @@ class Postgres(Datastore):
       x.execute(sql2,args2)
       return str(xid)
 
-  # FIXME: tag filters currently don't work
+  # FIXME: tag filters currently don't (really) work
   #   solution: allow non-equality filters (more than just "x=y")
   def find_experiments(self, pattern):
     self._ensure_connected()
@@ -188,7 +188,7 @@ class Postgres(Datastore):
       # FIXME: If we allow other criteria than metadata, update this test.
       logging.error('Invalid pattern: extraneous search fields')
       return []
-    if pattern=={}:
+    if pattern=={} or pattern['metadata']=={}:
       sql = 'SELECT "id" FROM "{0}"'.format(_sanitize(config.project_name))
       args = []
     else:
@@ -206,7 +206,6 @@ class Postgres(Datastore):
       x.execute(sql,args)
       rs = x.fetchall()
       return [r['id'] for r in rs]
-
     logging.error('Experiment query failed')
     return []
 

@@ -41,6 +41,22 @@ body {
   background: #ac3f40;
 }
 
+/* Navbar style */
+.navbar {
+  margin-bottom: 0px;
+  border-width: 1px 0px 0px 0px;
+  box-shadow: 0px 2px 1px grey;
+}
+
+/* Filter style */
+.xfilter {
+  background: #cccccc;
+  box-shadow: 0px 2px 1px grey;
+  padding-top: 7px;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+}
+
 /* Experiment style */
 .experiment {
   margin-bottom: 2px;

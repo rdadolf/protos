@@ -17,7 +17,9 @@ def display_dashboard():
   protos.config.load(os.path.join(app.instance_path,'protos.config'))
 
   autoload = flask.request.args.get('autoload',default=None,type=str)
-  return flask.render_template('dashboard.html', autoload=autoload)
+  xfilter = flask.request.args.get('filter',default={},type=str)
+
+  return flask.render_template('dashboard.html', autoload=autoload, filter=xfilter)
 
 @app.route('/experiment_info')
 def load_experiment_info():
@@ -53,7 +55,11 @@ def load_experiment_list():
   response = []
   os.environ['PGPASSFILE']='/var/www/flask_instance/pgpass'
   os.environ['POSTGRES_USERNAME']='dashboard'
-  exps = protos.query.search_experiments(mask)
+  try:
+    exps = protos.query.search_experiments(mask)
+  except Exception as e:
+    response.append(flask.render_template('flash_alert.html',type=type(e).__name__,message='Failed to lookup experiment list. '+str(e)))
+    exps = []
 
   m_exps = [exp.metadata() for exp in exps]
 
