@@ -26,7 +26,7 @@ class ProjectDB():
       protos.storage_adapters.postgres.Postgres(init=False)
     except OperationalError as e:
       raise nose.SkipTest
-    self.pg = protos.storage_adapters.postgres.Postgres(init=False)
+    self.pg = protos.storage_adapters.postgres.Postgres()
     return self.pg
   def __exit__(self, exc_type, exc_value, trace):
     self.pg._set_role_rw()
