@@ -7,7 +7,7 @@ import flask.json
 
 import protos
 import protos.query
-#import protos.internal
+import protos.internal
 
 app = flask.Flask(__name__, instance_path='/var/www/flask_instance')
 app.debug=True
@@ -54,15 +54,19 @@ def load_experiment_list():
   os.environ['PGPASSFILE']='/var/www/flask_instance/pgpass'
   os.environ['POSTGRES_USERNAME']='dashboard'
   exps = protos.query.search_experiments(mask)
+
+  m_exps = [exp.metadata() for exp in exps]
+
+  s_exps = sorted(m_exps, key=lambda x: protos.internal.parse_timestamp(x['time']))
+
   #app.logger.debug(exps)
-  for exp in exps:
-    exp_data = exp.metadata()
+  for exp in s_exps:
     for field in ['id','progress','name','time','tags','last_error']:
-      if field not in exp_data:
+      if field not in exp:
         flask.abort(400, description='Experiment "{0}" missing metadata field: "{1}"'.format(str(exp.id),field))
     error=False
-    if exp_data['last_error']!='':
+    if exp['last_error']!='':
       error=True
-    response.append(flask.render_template('experiment.html',experiment=exp_data,error=error))
+    response.append(flask.render_template('experiment.html',experiment=exp, error=error))
 
   return flask.json.dumps(response)
