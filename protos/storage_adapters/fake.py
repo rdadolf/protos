@@ -27,3 +27,5 @@ class Fake(Datastore):
     logging.debug('DATA: '+json.dumps(bundle['data']))
     logging.debug('METADATA: '+json.dumps(bundle['metadata']))
     logging.debug('FILES: '+json.dumps(bundle['files']))
+  def delete_experiment(self, xid):
+    logging.debug('DELETE EXP: '+str(xid))

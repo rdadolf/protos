@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+import sys
+import logging
+logging.basicConfig(level=logging.WARN, format='[%(levelname)s|%(filename)s:%(lineno)s] %(message)s')
+import argparse
+
+from protos.config import config
+from protos.query import search_experiments, exact_experiment
+from protos.storage import mechanisms as storage_mechanisms
+
+def delete_experiment(xid):
+  assert config.storage in storage_mechanisms, 'Couldnt find a data storage adapter named "'+config.storage+'"'
+  datastore = storage_mechanisms[config.storage]()
+
+  if exact_experiment(xid) is None:
+    return False
+
+  if datastore.delete_experiment(xid):
+    return True
+  else:
+    return False
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('victim',metavar='id',help='The identifier to remove.')
+
+  parser.add_argument('-c','--config',help='Specify a protos configuration file')
+  parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
+  args = parser.parse_args()
+
+  # Find a configuration file
+  f = config.find(hint=args.config)
+  if f is not None:
+    config.load(f)
+  else:
+    logging.error('Cannot find a config file. The default configuration doesnt specify any datastore to clean up.')
+    sys.exit(-1)
+
+  if args.verbose:
+    logging.getLogger().setLevel(logging.DEBUG)
+
+  victim = str(args.victim)
+
+  if delete_experiment(victim):
+    print 'Success.'
+  else:
+    print 'Failure.'
+    sys.exit(-1)
+
+if __name__=='__main__':
+  main()

@@ -4,6 +4,7 @@ from functools import reduce
 import pwd
 import logging
 import json
+import shutil
 
 from ..config import config
 from ..internal import timestamp
@@ -15,6 +16,7 @@ class Disk(Datastore):
 
     # Check/create the data directory if necessary
     if not os.path.isdir(config.data_dir):
+      assert config.data_dir!='', 'Config parameter "data_dir" cannot be empty if using the "disk" storage adapter'
       logging.warning('Data directory not found. Creating a new, empty one at "'+config.data_dir+'"') # This is unusual. Normally the data directory is already there. This might be a red flag for problems, but we can still carry on.
       os.mkdir(config.data_dir)
     # Check/create a project directory
@@ -81,3 +83,12 @@ class Disk(Datastore):
     logging.debug('Writing data bundle to disk:\n'+json.dumps(bundle,indent=2))
     json.dump(bundle,f,indent=2)
 
+
+  def delete_experiment(self, xid):
+    xpath = self._get_xpath(xid)
+    assert os.path.isdir(xpath), 'Experiment does not exist'
+    shutil.rmtree(xpath)
+    if os.path.isdir(xpath):
+      logging.error('Failed to delete experiment '+str(xid)+' at '+str(xpath))
+      return False
+    return True

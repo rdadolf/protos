@@ -58,3 +58,6 @@ class Datastore: # Abstract interface class
     ''' This function should take a serialized bundle and write it to whatever backing store it uses.'''
     raise NotImplementedError('Missing implementation in storage adapter')
 
+  def delete_experiment(self, xid):
+    ''' Deletes a single experiment and all its associated data bundles. '''
+    raise NotImplementedError('Missing implementation in storage adapter')

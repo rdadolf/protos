@@ -146,7 +146,7 @@ class Postgres(Datastore):
     # BUNDLE TABLE
     if need_new_btable:
       columns = ', '.join(['"{0}" {1}'.format(col,typ) for (col,typ) in BDL_METADATA_FIELDS])
-      bsql = 'CREATE TABLE "{0}_bundles" ("bid" bigserial, PRIMARY KEY ("bid"), "xid" bigint REFERENCES "{0}", {1}, "data" text)'.format(_sanitize(project_name),  columns)
+      bsql = 'CREATE TABLE "{0}_bundles" ("bid" bigserial, PRIMARY KEY ("bid"), "xid" bigint REFERENCES "{0}", {1}, "data" text, "files" text)'.format(_sanitize(project_name),  columns)
       with Transaction(self._conn) as x:
         logging.debug('PostgreSQL: '+str(bsql))
         x.execute(bsql)
@@ -298,7 +298,9 @@ class Postgres(Datastore):
       x.execute(qsql, qsql_args)
       bs = x.fetchall()
       bundles = [{'metadata': {k:j[k] for (k,t) in BDL_METADATA_FIELDS}, 'data':json.loads(j['data'])} for j in bs]
-    return [b for b in bundles if _json_subset(dat,b)]
+      return [b for b in bundles if _json_subset(dat,b)]
+    logging.error('Failed to find bundles')
+    return []
 
  
   def write_bundle(self, bundle, xid):
@@ -310,8 +312,8 @@ class Postgres(Datastore):
     colsql = ','.join(['"{0}"'.format(c) for c in columns])
     values = [bundle['metadata'][c] for c in columns]
     valsql = ','.join(['%s' for c in columns])
-    qsql = 'INSERT INTO "{0}_bundles" ("xid", {1}, "data") VALUES (%s,{2},%s) RETURNING "bid"'.format(_sanitize(config.project_name), colsql, valsql)
-    qsql_args = [xid]+values+[json.dumps(bundle['data'])]
+    qsql = 'INSERT INTO "{0}_bundles" ("xid", {1}, "data", "files") VALUES (%s,{2},%s,%s) RETURNING "bid"'.format(_sanitize(config.project_name), colsql, valsql)
+    qsql_args = [xid]+values+[json.dumps(bundle['data'])]+[json.dumps(bundle['files'])]
     bsql = 'UPDATE "{0}_bundles" SET "id"=%s WHERE "bid"=%s'.format(_sanitize(config.project_name))
 
     with Transaction(self._conn) as x:
@@ -323,3 +325,20 @@ class Postgres(Datastore):
       x.execute(bsql,bsql_args)
 
     return bid
+
+  def delete_experiment(self, xid):
+    self._ensure_connected()
+    self._set_role_rw()
+
+    bsql = 'DELETE FROM "{0}_bundles" WHERE "xid"=%s'.format(_sanitize(config.project_name))
+    bsql_args = str(xid)
+    xsql = 'DELETE FROM "{0}" WHERE "xid"=%s'.format(_sanitize(config.project_name))
+    xsql_args = str(xid)
+
+    with Transaction(self._conn) as x:
+      logging.debug('PostgreSQL: '+x.mogrify(bsql,bsql_args))
+      x.execute(bsql, bsql_args)
+      logging.debug('PostgreSQL: '+x.mogrify(xsql,xsql_args))
+      x.execute(xsql, xsql_args)
+
+    return True
