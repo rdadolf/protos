@@ -124,3 +124,7 @@ body {
   position: relative;
   display: none;
 }
+.md-info {
+  margin-right: 1em;
+  white-space: nowrap;
+}

@@ -7,9 +7,21 @@
     {% endif%}
   </div></div>
   <div class="row"><div class="col-xs-12">
-    <p>{% for tag in exp_md['tags'] %}
-      <span class="label label-default">{{ tag }}</span>
-    {% endfor %}</p>
+    <p>
+      <span class="md-info"><strong>XID:</strong> {{ exp_md.id }}</span>
+      <span class="md-info"><strong>Host:</strong> {{ exp_md.host }}</span>
+      <span class="md-info"><strong>Tags:</strong>
+        {% for tag in exp_md['tags'] %}
+        <span class="label label-default">{{ tag }}</span>
+        {# The md-info CSS class groups things by disallowing word wrapping.
+           We just want the "Tags:" header and the first tag to be grouped,
+           so we close out the span after the first tag. #}
+        {% if loop.first %}
+        </span><span>
+        {% endif %}
+        {% endfor %}
+      </span>
+    </p>
   </div></div>
   <div class="row">
     <div class="col-sm-4">
