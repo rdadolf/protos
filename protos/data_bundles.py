@@ -16,10 +16,21 @@ from .internal import timestamp
 # useful for error checking.
 # FIXME? This interface between Experiments and Bundles seems clunky.
 class Experiment_Data:
-  def __init__(self, bundle_tag, storage, storage_xid):
+  def __init__(self, bundle_tag, storage, storage_xid, xscratch):
     self.bundle_tag = bundle_tag
     self.storage = storage
     self.storage_xid = storage_xid
+    self.xscratch = xscratch
+  @property
+  def directory(self):
+    '''
+A directory that persists for the life of the experiment.
+
+Protocols can use this directory in one of two ways:
+1) Manually move files to this directory, then call bundle.add_file(<path>).
+2) Call bundle.add_file(<path>, copy=True)
+'''
+    return self.xscratch
 
 # These tokens are used at experiment parse time to thread data dependencies
 # without having to invoke protocol functions (which are monadic and never
@@ -55,6 +66,7 @@ class Data_Bundle:
     self._tag = xdata.bundle_tag
     self._storage = xdata.storage
     self._storage_xid = xdata.storage_xid
+    self._xscratch = xdata.directory
 
     # When protos creates a bundle from precomputed data, it uses all of the
     # fields from the old bundle, so there's no reason to initialize anything.
@@ -104,15 +116,19 @@ class Data_Bundle:
 
   ### User-facing ###
 
-  def add_file(self, f):
+  def add_file(self, f, copy=False):
     abs_f = os.path.abspath(f)
     assert os.path.isfile(abs_f), 'No file "'+str(abs_f)+'" to add to '+str(self)
+    assert os.path.isdir(self._xscratch), 'Corrupted experiment state: experiment scratch directory "'+str(self._xscratch)+'" doesnt exist'
 
-    # FIXME: This broke when we abstracted storage from data bundles.
-    logging.error('Adding files to data bundles is currently broken. "'+f+'" was not added.')
-    #shutil.copy(abs_f,self.directory)
-    #new_name = os.path.join( self.directory, os.path.basename(abs_f) )
-    #self.files.append(new_name)
+    if copy:
+      shutil.copy(abs_f, self._xscratch)
+      name = os.path.join( self._xscratch, os.path.basename(abs_f) )
+    else:
+      name = abs_f
+
+    self.files.append(name)
+
 
 class Void_Bundle(Data_Bundle):
   def __init__(self, experiment):

@@ -244,7 +244,7 @@ def main():
 
   if args.debug:
     args.verbose = True
-    config.storage = 'none'
+    config.storage = 'fake'
 
   if args.verbose:
     logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually

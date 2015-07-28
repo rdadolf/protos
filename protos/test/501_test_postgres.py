@@ -1,6 +1,8 @@
 from utils import *
 import os
 import json
+import nose
+from psycopg2 import OperationalError
 
 STORAGE_SERVER=os.getenv('PROTOS_STORAGE_SERVER', '127.0.0.1')
 
@@ -20,7 +22,11 @@ class ProjectDB():
   def __init__(self):
     pass
   def __enter__(self):
-    self.pg = protos.storage_adapters.postgres.Postgres()
+    try:
+      protos.storage_adapters.postgres.Postgres(init=False)
+    except OperationalError as e:
+      raise nose.SkipTest
+    self.pg = protos.storage_adapters.postgres.Postgres(init=False)
     return self.pg
   def __exit__(self, exc_type, exc_value, trace):
     self.pg._set_role_rw()

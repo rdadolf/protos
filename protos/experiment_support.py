@@ -102,47 +102,49 @@ class Experiment:
     self._metadata['progress'] = 0
     self._metadata['last_error'] = ''
 
-    progress_count = 0
-    progress_total = len(self._schedule)
-    for (f,tok,a,kw) in self._schedule:
-      # Replace data bundle tokens with actual data bundles
-      # First for keyword arguments
-      for (k,v) in kw.items():
-        if isinstance(v,Bundle_Token):
-          # FIXME: buggy inverted data dependencies can cause this lookup to fail
-          kw[k] = self._bundles[v.id]
-      # And for positional arguments
-      for i in xrange(0,len(a)):
-        arg = a[i]
-        if isinstance(arg,Bundle_Token):
-          # FIXME: buggy inverted data dependencies can cause this lookup to fail
-          a[i] = self._bundles[arg.id]
+    with scratch_directory() as xscratch:
+      self._xscratch = xscratch
+      progress_count = 0
+      progress_total = len(self._schedule)
+      for (f,tok,a,kw) in self._schedule:
+        # Replace data bundle tokens with actual data bundles
+        # First for keyword arguments
+        for (k,v) in kw.items():
+          if isinstance(v,Bundle_Token):
+            # FIXME: buggy inverted data dependencies can cause this lookup to fail
+            kw[k] = self._bundles[v.id]
+        # And for positional arguments
+        for i in xrange(0,len(a)):
+          arg = a[i]
+          if isinstance(arg,Bundle_Token):
+            # FIXME: buggy inverted data dependencies can cause this lookup to fail
+            a[i] = self._bundles[arg.id]
 
-      # Now run the function and store the resulting bundle object
-      xdata = Experiment_Data(tok.id, self._storage, self._storage_xid)
-      with scratch_directory() as d:
-        os.chdir(d)
-        # FIXME: Capture timing information?
-        print('  Running protocol '+str(f.__name__))
-        try:
-          bundle = f(xdata,*a,**kw)
-          assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
-        except:
-          e = sys.exc_info()[1]
-          logging.error('Protocol "'+str(f.__name__)+'" failed.')
-          self._metadata['last_error'] = str(e)
-          self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
-          raise
+        # Now run the function and store the resulting bundle object
+        xdata = Experiment_Data(tok.id, self._storage, self._storage_xid, self._xscratch)
+        with scratch_directory() as d:
+          os.chdir(d)
+          # FIXME: Capture timing information?
+          print('  Running protocol '+str(f.__name__))
+          try:
+            bundle = f(xdata,*a,**kw)
+            assert isinstance(bundle,Data_Bundle), 'Protocol "'+str(f.__name__)+'" returned a '+str(type(bundle))+' instead of a bundle object'
+          except:
+            e = sys.exc_info()[1]
+            logging.error('Protocol "'+str(f.__name__)+'" failed.')
+            self._metadata['last_error'] = str(e)
+            self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+            raise
 
-      # Now persist the bundle, for the record and for incremental re-eval later
-      bundle._persist()
+        # Now persist the bundle, for the record and for incremental re-eval later
+        bundle._persist()
 
-      # Update our progress
-      progress_count += 1
-      self._metadata['progress'] = str(100*progress_count/progress_total)
-      self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+        # Update our progress
+        progress_count += 1
+        self._metadata['progress'] = str(100*progress_count/progress_total)
+        self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
-      self._bundles[tok.id] = bundle
+        self._bundles[tok.id] = bundle
 
     return True
 

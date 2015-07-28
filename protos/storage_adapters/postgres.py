@@ -57,10 +57,11 @@ def _sanitize(s):
   return re.sub(r'\W','',s)
 
 class Postgres(Datastore):
-  def __init__(self):
+  def __init__(self, init=True):
     self._conn = None
     self._connect()
-    self._init_project_idempotently(config.project_name)
+    if init:
+      self._init_project_idempotently(config.project_name)
     pass
 
   def _disconnect(self):
