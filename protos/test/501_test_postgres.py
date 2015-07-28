@@ -38,7 +38,7 @@ class ProjectDB():
 def test_authentication():
   with ProjectDB() as pg:
     assert pg._conn.closed==0, 'Connection failed'
-  
+
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_init():
@@ -70,7 +70,7 @@ def test_experiment_metadata():
     md = pg.read_experiment_metadata(xid)
     assert type(md)==type({}), 'Incorrect return type for experiment metadata'
     assert ('id' in md) and (type(md['id'])==str), 'xid not converted to string id in experiment metadata output'
-  
+
     # Test with a full MD
     md = {'id': xid,
           'name': 'example',
@@ -99,12 +99,12 @@ def test_find_experiment():
     x2 = pg.create_experiment_id('x2')
     q1 = {'metadata': {'id':x1}}
     q2 = {'metadata': {'id':'1234'}}
-  
+
     xids = pg.find_experiments(q1)
     assert len(xids)==1, 'Couldnt find the right experiments'
     md = pg.read_experiment_metadata(xids[0])
     assert md['name']=='x1', 'Retrieved the wrong experiment'
-  
+
     xids = pg.find_experiments(q2)
     assert len(xids)==0, 'Found a nonexistent experiment'
     
@@ -115,7 +115,7 @@ def test_find_experiment():
 def test_bundles():
   with ProjectDB() as pg:
     x = pg.create_experiment_id('x')
-    b = {'metadata': {'bundle_type':'placeholder', 'time':'now', 'id':'-1'}, 'data': {'values':[0, 1, 2]}}
+    b = {'metadata': {'bundle_type':'placeholder', 'time':'now', 'id':'-1'}, 'data': {'values':[0, 1, 2]}, 'files': [] }
 
     bid = pg.write_bundle(b, x)
     b2 = pg.find_bundles({}, x)[0]
@@ -123,4 +123,29 @@ def test_bundles():
     assert len(b['metadata'])==len(b2['metadata']), 'incomplete metadata'
     assert b['metadata']['bundle_type']==b2['metadata']['bundle_type'], 'bundle type corrupted'
     assert b['metadata']['time']==b2['metadata']['time'], 'time corrupted'
-    
+
+
+@set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
+def test_delete_experiment():
+  with ProjectDB() as pg:
+    x = pg.create_experiment_id('x')
+    q1 = {'metadata': {'id':x}}
+    b = {'metadata': {'bundle_type':'placeholder', 'time':'now', 'id':'-1'}, 'data': {'values':[0, 1, 2]}, 'files': [] }
+
+    xids = pg.find_experiments(q1)
+    assert len(xids)==1, 'Couldnt find the right experiments'
+    md = pg.read_experiment_metadata(xids[0])
+    assert md['name']=='x', 'Retrieved the wrong experiment'
+
+    bid = pg.write_bundle(b,x)
+    bids = pg.find_bundles({},x)
+    assert len(bids)==1, 'Couldnt find the bundle we created'
+
+    deleted = pg.delete_experiment(x)
+    assert deleted, 'Couldnt delete experiment'
+
+    xids = pg.find_experiments(q1)
+    assert len(xids)==0, 'Experiment still exists after deleting'
+    bids = pg.find_bundles({},x)
+    assert len(bids)==0, 'Bundle still exists after deleting'
+
