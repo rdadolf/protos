@@ -6,6 +6,12 @@ function get_active_project() {
 }
 function get_experiment_mask() {
   mask = String($('#activeFilter').val());
+
+  if( mask=='' ) {
+    $('#activeFilter').val('{}');
+    return '{}';
+  }
+
   console.log(mask);
   try {
     JSON.parse(mask);
