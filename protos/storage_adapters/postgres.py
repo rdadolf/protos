@@ -331,9 +331,9 @@ class Postgres(Datastore):
     self._set_role_rw()
 
     bsql = 'DELETE FROM "{0}_bundles" WHERE "xid"=%s'.format(_sanitize(config.project_name))
-    bsql_args = str(xid)
+    bsql_args = [str(xid)]
     xsql = 'DELETE FROM "{0}" WHERE "xid"=%s'.format(_sanitize(config.project_name))
-    xsql_args = str(xid)
+    xsql_args = [str(xid)]
 
     with Transaction(self._conn) as x:
       logging.debug('PostgreSQL: '+x.mogrify(bsql,bsql_args))
