@@ -10,6 +10,8 @@ from .config import config
 __all__.extend(['config'])
 from .log import log
 __all__.extend(['log'])
+from .time import timestamp, parse_timestamp
+__all__.extend(['timestamp','parse_timestamp'])
 
 # Enable submodules
 __all__.extend(['query'])

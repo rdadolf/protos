@@ -8,7 +8,7 @@ import uuid
 from functools import reduce
 
 from .config import config
-from .internal import timestamp
+from .time import timestamp
 
 # Experiment data is strictly a data packaging mechanism for transferring
 # information about the experiment in progress to the data bundles it uses.

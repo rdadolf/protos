@@ -10,7 +10,7 @@ import platform
 from .data_bundles import Experiment_Data, Data_Bundle, Bundle_Token
 from .config import config
 from .fs_layout import scratch_directory
-from .internal import timestamp
+from .time import timestamp
 
 from .storage import mechanisms as storage_mechanisms
 
@@ -97,10 +97,9 @@ class Experiment:
     self._metadata['host'] = hostname
     self._metadata['platform'] = platform.platform()
     self._metadata['user'] = pwd.getpwuid(os.getuid())[0]
-    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
-
     self._metadata['progress'] = 0
     self._metadata['last_error'] = ''
+    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
     with scratch_directory() as xscratch:
       self._xscratch = xscratch

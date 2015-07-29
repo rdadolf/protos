@@ -7,7 +7,7 @@ import flask.json
 
 import protos
 import protos.query
-import protos.internal
+import protos.time
 
 app = flask.Flask(__name__, instance_path='/var/www/flask_instance')
 app.debug=True
@@ -72,7 +72,7 @@ def load_experiment_list():
 
   m_exps = [exp.metadata() for exp in exps]
 
-  s_exps = sorted(m_exps, key=lambda x: protos.internal.parse_timestamp(x['time']))
+  s_exps = sorted(m_exps, key=lambda x: protos.time.parse_timestamp(x['time']))
 
   #app.logger.debug(exps)
   for exp in s_exps:

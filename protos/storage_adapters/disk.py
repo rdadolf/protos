@@ -7,7 +7,7 @@ import json
 import shutil
 
 from ..config import config
-from ..internal import timestamp
+from ..time import timestamp
 from .adapters import Datastore, _json_subset
 
 class Disk(Datastore):

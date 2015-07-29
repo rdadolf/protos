@@ -11,7 +11,7 @@ import psycopg2.extras as extras
 from datetime import datetime
 
 from ..config import config
-from ..internal import timestamp
+from ..time import timestamp
 from .adapters import Datastore, _json_subset
 
 # Currently, everything is a strong.

@@ -2,7 +2,7 @@ import logging
 import json
 
 from ..config import config
-from ..internal import timestamp
+from ..time import timestamp
 from .adapters import Datastore
 
 class Fake(Datastore):

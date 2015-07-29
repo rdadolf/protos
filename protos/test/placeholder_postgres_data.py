@@ -24,12 +24,12 @@ def populate_test_db():
           'host': 'localhost',
           'platform': '*nix',
           'user': 'me',
-          'time': protos.internal.timestamp(),
+          'time': protos.time.timestamp(),
           'progress': '60' }
     pg.write_experiment_metadata(md,xid)
-    b = {'metadata': {'bundle_type':'placeholder', 'time':protos.internal.timestamp(), 'id':'-1'}, 'data': {'values':range(i,i+4)}}
+    b = {'metadata': {'bundle_type':'placeholder', 'time':protos.time.timestamp(), 'id':'-1'}, 'data': {'values':range(i,i+4)}}
     pg.write_bundle(b,xid)
     b2 = b
     b2['data']['values'] = range(i,i+5)
-    b2['metadata']['time'] = protos.internal.timestamp()
+    b2['metadata']['time'] = protos.time.timestamp()
     pg.write_bundle(b2,xid)
