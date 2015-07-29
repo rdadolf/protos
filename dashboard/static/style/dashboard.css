@@ -124,7 +124,9 @@ body {
   position: relative;
   display: none;
 }
-.md-info {
+.experiment-md-info {
   margin-right: 1em;
+}
+.experiment-md-nowrap {
   white-space: nowrap;
 }

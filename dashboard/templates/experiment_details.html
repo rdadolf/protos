@@ -8,9 +8,9 @@
   </div></div>
   <div class="row"><div class="col-xs-12">
     <p>
-      <span class="md-info"><strong>XID:</strong> {{ exp_md.id }}</span>
-      <span class="md-info"><strong>Host:</strong> {{ exp_md.host }}</span>
-      <span class="md-info"><strong>Tags:</strong>
+      <span class="experiment-md-info"><span class="experiment-md-nowrap"><strong>XID:</strong> {{ exp_md.id }}</span></span>
+      <span class="experiment-md-info"><span class="experiment-md-nowrap"><strong>Host:</strong> {{ exp_md.host }}</span></span>
+      <span class="experiment-md-info"><span class="experiment-md-nowrap"><strong>Tags:</strong>
         {% for tag in exp_md['tags'] %}
         <span class="label label-default">{{ tag }}</span>
         {# The md-info CSS class groups things by disallowing word wrapping.
@@ -20,7 +20,7 @@
         </span><span>
         {% endif %}
         {% endfor %}
-      </span>
+      </span></span>
     </p>
   </div></div>
   <div class="row">
