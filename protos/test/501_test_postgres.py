@@ -124,6 +124,12 @@ def test_bundles():
     assert b['metadata']['bundle_type']==b2['metadata']['bundle_type'], 'bundle type corrupted'
     assert b['metadata']['time']==b2['metadata']['time'], 'time corrupted'
 
+    b3 = pg.find_bundles({'metadata': {'bundle_type':'placeholder','time':'now'}}, x)[0]
+    assert b['data']==b3['data'], 'data corrupted'
+    assert len(b['metadata'])==len(b3['metadata']), 'incomplete metadata'
+    assert b['metadata']['bundle_type']==b3['metadata']['bundle_type'], 'bundle type corrupted'
+    assert b['metadata']['time']==b3['metadata']['time'], 'time corrupted'
+
 
 @set_config(storage='postgres', storage_server=STORAGE_SERVER, project_name='test_project')
 def test_delete_experiment():
