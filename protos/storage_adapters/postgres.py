@@ -287,14 +287,15 @@ class Postgres(Datastore):
     # If we try to write an MD field we don't know about, alert us to the problem
     if( len(names)<len(mdnames) ):
       logging.warning('Unknown metadata fields "'+str( set(mdnames)-set(colnames) )+'"')
-    constraints = ['"xid"=%s']
-    constraints += ' AND '.join(['"{0}"=%s'.format(n) for n in names])
+    constraints = '"xid"=%s'
+    constraints += ''.join([' AND "{0}"=%s'.format(n) for n in names])
     values = [xid]
     values += [md[n] for n in names]
 
     with Transaction(self._conn) as x:
-      qsql = 'SELECT * FROM "{0}_bundles" WHERE xid=%s'.format(_sanitize(config.project_name))
-      qsql_args = [xid]
+      qsql = 'SELECT * FROM "{0}_bundles" WHERE {1}'.format(_sanitize(config.project_name), constraints)
+      qsql_args = values
+      logging.debug('PostgreSQL: '+x.mogrify(qsql,qsql_args))
       x.execute(qsql, qsql_args)
       bs = x.fetchall()
       bundles = [{'metadata': {k:j[k] for (k,t) in BDL_METADATA_FIELDS}, 'data':json.loads(j['data']), 'files':json.loads(j['files'])} for j in bs]
