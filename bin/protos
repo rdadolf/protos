@@ -233,6 +233,7 @@ def main():
   #parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
   parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
   parser.add_argument('-c','--config',help='Specify a protos configuration file')
+  parser.add_argument('-l','--list',action='store_true',help='Print a list of protocols available to the given experiment file and exit.')
   args = parser.parse_args()
 
   # Find a configuration file
@@ -252,24 +253,26 @@ def main():
   if args.preserve:
     config.preserve = True
 
-
   # Find the experiment file we're going to work on.
-  #args=sys.argv[1:]
-  #if len(args)==0:
-  #  print('Usage: protos <experiment-file>')
-  #  sys.exit(-1)
-  #experiment = sys.argv[1]
   if not os.path.isfile(args.experiment):
     logging.error('Could not find experiment file: '+args.experiment)
     sys.exit(-1)
   exf=os.path.realpath(args.experiment)
 
-  logging.info('Running experiment:'+str(exf)) # DEBUG
-
-  # Setup parameters and run
+  # Load config and find all protocols
   infer_from_exf(exf,config)
   logging.debug('Protocols directory: '+str(config.protocol_dir))
   protocol_dict = load_protocols(config.protocol_dir)
+
+  # If just listing
+  if args.list:
+    print 'Available experiments:'
+    for p in sorted(protocol_dict):
+      print ' ',p
+    sys.exit(0)
+
+  # Run the actual experiment
+  logging.info('Running experiment:'+str(exf)) # DEBUG
   exp_list = load_exf(exf, config)
 
   # if local:
