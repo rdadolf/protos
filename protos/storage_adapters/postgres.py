@@ -284,7 +284,7 @@ class Postgres(Datastore):
     mdnames = md.keys()
     # Only match valid MD values
     names = list(set(colnames)&set(mdnames))
-    # If we try to write an MD field we don't know about, alert us to the problem
+    # If we try to match an MD field we don't know about, alert us to the problem
     if( len(names)<len(mdnames) ):
       logging.warning('Unknown metadata fields "'+str( set(mdnames)-set(colnames) )+'"')
     constraints = '"xid"=%s'
@@ -305,6 +305,7 @@ class Postgres(Datastore):
 
  
   def write_bundle(self, bundle, xid):
+    # FIXME: handle unexpected metadata columns
     self._ensure_connected()
     self._set_role_rw()
 
