@@ -266,7 +266,7 @@ def main():
 
   # If just listing
   if args.list:
-    print 'Available experiments:'
+    print 'Available protocols:'
     for p in sorted(protocol_dict):
       print ' ',p
     sys.exit(0)
