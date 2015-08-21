@@ -86,6 +86,39 @@ class Experiment:
     self._bundles[data_tok] = None
     pass
 
+  def _killsets(self):
+    # Given a schedule, this produces the bundle kill sets for each protocol.
+    # (c.f.- compiler dataflow analysis)
+    # This function only works *before* _run is run.
+
+    killsets = [set([]) for p in self._schedule]
+    liveset = set([])
+    for i in xrange(len(self._schedule)-1,-1,-1): # work backwards
+      # If a bundle exists in the parameter list of a protocol, and we haven't
+      # seen it before, it's the last use, so put it in that protocol's killset
+      for arg in self._schedule[i][2]:
+        if isinstance(arg, Bundle_Token):
+          if arg.id not in liveset:
+            killsets[i].add(arg.id)
+            liveset.add(arg.id)
+      for (kw,arg) in self._schedule[i][3].items():
+        if isinstance(arg, Bundle_Token):
+          if arg.id not in liveset:
+            killsets[i].add(arg.id)
+            liveset.add(arg.id)
+      # Check our own bundle
+      if self._schedule[i][1].id in liveset:
+        # Our bundle is used later. Yay!
+        # But it can't be used earlier, so toss it.
+        liveset.remove(self._schedule[i][1].id)
+      else:
+        # Useless bundle. Kill it.
+        killsets[i].add(self._schedule[i][1].id)
+
+    assert len(liveset)==0, 'Bundle referenced before being defined'
+
+    return killsets
+
   def _run(self):
     #logging.debug('Running experiment')
     print('--- Running Experiment "'+str(self._name)+'" ---')
@@ -101,11 +134,14 @@ class Experiment:
     self._metadata['last_error'] = ''
     self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
+    killsets = self._killsets()
+
     with scratch_directory() as xscratch:
       self._xscratch = xscratch
       progress_count = 0
       progress_total = len(self._schedule)
-      for (f,tok,a,kw) in self._schedule:
+      for (sched,killset) in zip(xrange(0,len(self._schedule)), killsets):
+        (f,tok,a,kw) = self._schedule[sched]
         # Replace data bundle tokens with actual data bundles
         # First for keyword arguments
         for (k,v) in kw.items():
@@ -143,7 +179,15 @@ class Experiment:
         self._metadata['progress'] = str(100*progress_count/progress_total)
         self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
-        self._bundles[tok.id] = bundle
+        if tok.id not in killset:
+          # Add the bundle we've generated, if it will be used later
+          self._bundles[tok.id] = bundle
+
+        # Remove references to all bundles
+        for vic in killset:
+          self._bundles[vic] = None
+        self._schedule[sched] = None
+        
 
     return True
 
