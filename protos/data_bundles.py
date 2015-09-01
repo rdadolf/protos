@@ -111,7 +111,8 @@ class Data_Bundle:
 
   def _persist(self):
     ''' Persistently stores a copy of the bundle for archiving and/or reuse. '''
-    self._storage.write_bundle( self._externalize(), self._storage_xid )
+    if not config.storage_readonly:
+      self._storage.write_bundle( self._externalize(), self._storage_xid )
     return True
 
   ### User-facing ###

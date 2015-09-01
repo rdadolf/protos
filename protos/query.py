@@ -53,3 +53,6 @@ def exact_experiment(xid):
     # wrong and we probably can't trust any of the results. 
     return None
   return Query_Result(datastore,xids[0])
+
+def exact(xid,bid):
+  return exact_experiment(xid).exact_bundle(bid)

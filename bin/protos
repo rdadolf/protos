@@ -230,6 +230,7 @@ def main():
   #parser.add_argument('-r','--restart',action='store_true',help='Remove all prior data and re-run the experiment ')
   parser.add_argument('--preserve',action='store_true',help='Prevents temporary directories from being cleaned up. Caution! This creates a lot of garbage in /tmp.')
   parser.add_argument('-d','--debug',action='store_true',help='Enable debug mode. Experiments are not stored persistently. Implies --verbose.')
+  parser.add_argument('-r','--readonly',action='store_true',help='Enable read-only mode. Experiments are not stored persistently but may still access a persistent DB. Does not imply --verbose.')
   #parser.add_argument('-w','--where',default='local',choices=['local','condor'],help='Which system to run the experiment on')
   parser.add_argument('-v','--verbose',action='store_true',help='Print out debugging information')
   parser.add_argument('-c','--config',help='Specify a protos configuration file')
@@ -246,6 +247,9 @@ def main():
   if args.debug:
     args.verbose = True
     config.storage = 'fake'
+
+  if args.readonly:
+    config.storage_readonly = True
 
   if args.verbose:
     logging.getLogger().setLevel(logging.DEBUG) # FIXME: Lower to INFO eventually

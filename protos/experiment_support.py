@@ -75,9 +75,13 @@ class Experiment:
     # Initialize our storage interface
     assert config.storage in storage_mechanisms, 'Could not find a data storage adapter name "'+config.storage+'"'
     self._storage = storage_mechanisms[config.storage]()
-    self._storage_xid = self._storage.create_experiment_id(self._name)
+    if not config.storage_readonly:
+      self._storage_xid = self._storage.create_experiment_id(self._name)
+    else:
+      self._storage_xid = 'INVALID-XID' # should never appear in persistent storage
     self._metadata['id'] = str(self._storage_xid)
-    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+    if not config.storage_readonly:
+      self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
   def _add(self, func, data_tok, args, kwargs):
     logging.debug('Adding function '+str(func.__name__))
@@ -132,7 +136,8 @@ class Experiment:
     self._metadata['user'] = pwd.getpwuid(os.getuid())[0]
     self._metadata['progress'] = 0
     self._metadata['last_error'] = ''
-    self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+    if not config.storage_readonly:
+      self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
     killsets = self._killsets()
 
@@ -168,7 +173,8 @@ class Experiment:
             e = sys.exc_info()[1]
             logging.error('Protocol "'+str(f.__name__)+'" failed.')
             self._metadata['last_error'] = str(e)
-            self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+            if not config.storage_readonly:
+              self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
             raise
 
         # Now persist the bundle, for the record and for incremental re-eval later
@@ -177,7 +183,8 @@ class Experiment:
         # Update our progress
         progress_count += 1
         self._metadata['progress'] = str(100*progress_count/progress_total)
-        self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
+        if not config.storage_readonly:
+          self._storage.write_experiment_metadata(self._metadata, self._storage_xid)
 
         if tok.id not in killset:
           # Add the bundle we've generated, if it will be used later

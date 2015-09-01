@@ -16,6 +16,7 @@ class config:
   # Storage
   storage = 'fake' # mechanism name
   storage_server = '127.0.0.1' # if necessary
+  storage_readonly = False # Disables all writes, but still allows querying
 
   # Parameters
   project_name = 'default'
