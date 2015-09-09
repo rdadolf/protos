@@ -198,7 +198,7 @@ class Postgres(Datastore):
         logging.error('Experiment queries are not allowed to have deeply-nested values')
         return []
       columns = ['"'+str(_sanitize(k))+'"' for k in pattern['metadata'].keys()]
-      arg_str = ','.join([c+'=%s' for c in columns])
+      arg_str = ' AND '.join([c+'=%s' for c in columns])
       sql = 'SELECT "id" FROM "{0}" WHERE {1}'.format(_sanitize(config.project_name), arg_str)
       args = pattern['metadata'].values()
 
